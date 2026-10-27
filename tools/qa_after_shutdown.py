@@ -238,7 +238,9 @@ def main():
         after_real = fingerprint()
         summary = {"fingerprinted_files_unchanged": before == after_real, "fingerprint_before": before, "fingerprint_after": after_real, "results": results}
         (root / "summary.json").write_text(json.dumps(summary, indent=2) + "\n")
-        for path in (Path.home() / "Library/Caches/local.artbrowser.qa", Path.home() / "Library/Preferences/local.artbrowser.qa.plist"):
+        library = Path.home() / "Library"
+        for path in (library / "Caches/local.artbrowser.qa", library / "Preferences/local.artbrowser.qa.plist", library / "Caches" / NAME,
+                     library / "Caches/SentryCrash" / NAME, library / "Application Support/firestore" / NAME, library / "HTTPStorages/local.artbrowser.qa"):
             if path.is_dir():
                 shutil.rmtree(path)
             elif path.exists():

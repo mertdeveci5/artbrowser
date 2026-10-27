@@ -18,6 +18,7 @@
 html{scroll-behavior:smooth;color-scheme:dark}
 body{margin:0;background:var(--bg);color:var(--ink);font-family:var(--sans);line-height:1.65;-webkit-font-smoothing:antialiased}
 .draft{background:#2a2410;color:#ffe9a8;text-align:center;padding:8px 16px;font:500 .78rem var(--sans)}
+.draft a{color:#ffe9a8;text-underline-offset:3px}
 
 /* ============ HERO (unchanged) ============ */
 .hero{min-height:100vh;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;padding:48px 20px 72px}
@@ -74,7 +75,7 @@ details p,details ul{margin-top:6px}
 </style>
 </head>
 <body>
-<div class="draft">Beta: tested on one Mac so far. Please tell us what you see.</div>
+<div class="draft">Beta: tested on one Mac so far. Please tell us what you see: <a href="https://github.com/mertdeveci5/artbrowser/issues">open an issue on GitHub</a>. <a href="https://github.com/mertdeveci5/artbrowser">Source code ↗</a></div>
 
 <header class="hero" id="top">
   <img class="logo" src="logo-vintage.png" alt="Art logo">
@@ -82,7 +83,7 @@ details p,details ul{margin-top:6px}
   <p class="sub"><span>Arc closes on December 22, 2026.</span><span>ArtBrowser is a private copy of the Arc on your Mac that doesn't need Arc's servers.</span></p>
   <div class="pills">
     <a id="download" class="pill light" href="install-artbrowser.sh" download>Download installer</a>
-    <a class="pill" href="#install">Read more</a>
+    <a class="pill" href="https://github.com/mertdeveci5/artbrowser">Read more</a>
   </div>
   <div class="meta">macOS · Apple Silicon · needs Arc 1.170.0 or 1.169.0 installed · everything stays on your Mac</div>
 </header>

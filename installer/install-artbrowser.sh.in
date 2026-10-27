@@ -151,7 +151,7 @@ main() {
     done
     say "This removes: ${apps[*]:-(no ArtBrowser app found)}"
     say "              $DEST_DATA_ROOT  (ArtBrowser's own copy of your data)"
-    say "It keeps your original Arc, your Arc data and any backups in $BACKUP_ROOT."
+    say "It also removes ArtBrowser's logs and caches. It keeps your original Arc, your Arc data and the backup in $BACKUP_ROOT (delete that folder yourself if you no longer want it)."
     confirm "Remove ArtBrowser now?" || die "Cancelled. Nothing was changed."
     art_running && die "ArtBrowser was opened while you were deciding. Quit it (⌘Q) and run this again."
     [ -L "$DEST_ALIAS" ] && rm "$DEST_ALIAS"
@@ -159,7 +159,9 @@ main() {
     rm -rf "$DEST_DATA_ROOT"
     defaults delete local.artbrowser.app >/dev/null 2>&1 || true
     rm -rf "$HOME/Library/Caches/local.artbrowser.app" "$HOME/Library/HTTPStorages/local.artbrowser.app" \
-           "$HOME/Library/Saved Application State/local.artbrowser.app.savedState"
+           "$HOME/Library/Saved Application State/local.artbrowser.app.savedState" \
+           "$SUPPORT/ArtBrowserPreservation.noindex" "$SUPPORT/firestore/ArtBrowser" \
+           "$HOME/Library/Caches/ArtBrowser" "$HOME/Library/Caches/SentryCrash/ArtBrowser"
     say "Done. ArtBrowser is removed. Arc was not touched."
     DONE=1; exit 0
   fi
