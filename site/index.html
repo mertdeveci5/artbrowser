@@ -49,6 +49,24 @@ h1{font:600 clamp(2.5rem,5.2vw,5rem)/1.08 var(--serif);letter-spacing:-.045em;ma
 @keyframes rise{from{opacity:0;transform:translateY(14px)}to{opacity:1;transform:none}}
 @media (prefers-reduced-motion:reduce){*{animation:none!important}html{scroll-behavior:auto}}
 
+.pills.open{flex-direction:column;align-items:center}
+.slot{display:flex;justify-content:center}
+.pill[hidden]{display:none}
+.run{width:min(800px,calc(100vw - 40px));text-align:left;transform-origin:50% 0}
+.run[hidden]{display:none}
+.run.in{animation:runin .25s cubic-bezier(.22,1,.36,1) both}
+@keyframes runin{from{opacity:0;transform:scale(.96);filter:blur(2px)}to{opacity:1;transform:none;filter:none}}
+.pill.out{opacity:0;transform:scale(.97);filter:blur(2px);transition:opacity .15s ease-out,transform .15s ease-out,filter .15s ease-out}
+.runcmd{display:flex;align-items:center;justify-content:space-between;gap:14px;background:#fff;color:#0b0b0b;border-radius:22px;padding:10px 10px 10px 22px}
+.runcmd code{color:#0b0b0b;font-size:.88rem;white-space:nowrap;line-height:1.5}
+.runcopy{flex:none;background:#0b0b0b;color:#fff;border:0;border-radius:999px;padding:10px 20px;font:500 .95rem var(--sans);cursor:pointer;transition:background .15s}
+.runcopy:hover{background:#262626}
+.runsteps{list-style:none;display:flex;flex-wrap:wrap;justify-content:center;gap:6px 22px;margin:16px 0 0;padding:0;color:var(--soft);font-size:.92rem}
+.runsteps b{display:inline-grid;place-items:center;width:20px;height:20px;margin-right:8px;border-radius:50%;background:#262626;color:#fff;font:500 .74rem var(--sans)}
+.hero :focus-visible{outline:2px solid #fff;outline-offset:3px}
+@media (max-width:860px){.runcmd code{white-space:normal;overflow-wrap:anywhere}}
+@media (max-width:520px){.runcmd{flex-direction:column;align-items:stretch;padding:16px;border-radius:18px}.runcopy{width:100%}.runsteps{flex-direction:column;align-items:center}}
+@media (prefers-reduced-motion:reduce){.run.in{animation:none}.pill.out{transition:none}}
 /* ============ /HERO ============ */
 
 /* ---------- everything below the hero reads like a read.cv page ---------- */
@@ -96,7 +114,13 @@ details p,details ul{margin-top:6px}
   <h1>Arc, reborn as Art</h1>
   <p class="sub"><span>Arc closes on December 22, 2026.</span><span>ArtBrowser is a private copy of the Arc on your Mac that doesn't need Arc's servers.</span></p>
   <div class="pills">
-    <a id="download" class="pill light" href="install-artbrowser.sh" download>Download installer</a>
+    <div class="slot">
+      <a id="get" class="pill light" href="#install" aria-expanded="false" aria-controls="run">Install ArtBrowser</a>
+      <div id="run" class="run" hidden>
+        <div class="runcmd"><code>curl -fsSL https://arcreborn.cool.computer/install-artbrowser.sh | bash</code><button id="runcopy" class="runcopy" type="button" data-copy="curl -fsSL https://arcreborn.cool.computer/install-artbrowser.sh | bash" aria-live="polite">Copy</button></div>
+        <ol class="runsteps"><li><b>1</b>Quit Arc (⌘Q)</li><li><b>2</b>Open Terminal</li><li><b>3</b>Paste, press Return</li></ol>
+      </div>
+    </div>
     <a class="pill" href="https://github.com/mertdeveci5/artbrowser">Read more</a>
   </div>
   <div class="meta">macOS · Apple Silicon · needs Arc 1.170.0 or 1.169.0 installed · everything stays on your Mac</div>
@@ -107,7 +131,7 @@ details p,details ul{margin-top:6px}
   <header class="who">
     <h2 class="name">ArtBrowser</h2>
     <p class="tag">A private copy of the Arc on your Mac, built from your own Arc and your own data. Everything stays on your Mac.</p>
-    <div class="chips"><a class="chip" href="install-artbrowser.sh" download>Download installer</a><a class="chip" href="https://github.com/mertdeveci5/artbrowser">GitHub ↗</a><a class="chip" href="#privacy">Privacy</a><a class="chip" href="#faq">Questions</a></div>
+    <div class="chips"><a class="chip" href="#install">Install</a><a class="chip" href="https://github.com/mertdeveci5/artbrowser">GitHub ↗</a><a class="chip" href="#privacy">Privacy</a><a class="chip" href="#faq">Questions</a></div>
   </header>
 
 <section class="sec" id="install"><h2 class="st">Install</h2>
@@ -138,13 +162,13 @@ details p,details ul{margin-top:6px}
 ▸ 4/5 Giving ArtBrowser its own copy of your data
 ▸ 5/5 Putting it in place
 
-✓ ArtBrowser is installed: ~/Applications/ArtBrowser.app</pre></details><details><summary>If it stops with a message</summary><ul><li><b>“Arc is still running”:</b> press ⌘Q in Arc and run it again.</li><li><b>“Your Arc is version …”:</b> only 1.170.0 and 1.169.0 are supported.</li><li><b>“Intel Mac”:</b> not supported yet.</li><li><b>“Arc has no saved sign-in”:</b> open Arc, sign in, quit it with ⌘Q, run it again.</li><li><b>“Already installed”:</b> remove it first (below), then install again.</li><li><b>“Does not match its checksum”:</b> don't use it. Download the installer again.</li></ul></details><details><summary>Uninstall</summary><p>Quit ArtBrowser, then run <code>curl -fsSL https://arcreborn.cool.computer/install-artbrowser.sh | bash -s -- --uninstall</code>. It asks you to confirm, removes the ArtBrowser app and its data, and keeps your Arc, your Arc data and the backup.</p></details></div></div>
+✓ ArtBrowser is installed: ~/Applications/ArtBrowser.app</pre></details><details><summary>If it stops with a message</summary><ul><li><b>“Arc is still running”:</b> press ⌘Q in Arc and run it again.</li><li><b>“Your Arc is version …”:</b> only 1.170.0 and 1.169.0 are supported.</li><li><b>“Intel Mac”:</b> not supported yet.</li><li><b>“Arc has no saved sign-in”:</b> open Arc, sign in, quit it with ⌘Q, run it again.</li><li><b>“Already installed”:</b> remove it first (below), then install again.</li><li><b>“Does not match its checksum”:</b> don't use it. Run the command again, and open an issue if it keeps happening.</li></ul></details><details><summary>Uninstall</summary><p>Quit ArtBrowser, then run <code>curl -fsSL https://arcreborn.cool.computer/install-artbrowser.sh | bash -s -- --uninstall</code>. It asks you to confirm, removes the ArtBrowser app and its data, and keeps your Arc, your Arc data and the backup.</p></details></div></div>
 </section>
 
 <section class="sec" id="privacy"><h2 class="st">Privacy</h2>
 <div class="r"><div class="lab">Local</div><div class="c"><p><b>Your data stays on your Mac.</b> There is no account and no server of ours, so we never receive your tabs, history, passwords or anything else.</p><ul><li>The installer downloads two things: itself, and one small launcher file. It uploads nothing.</li><li>Your data is copied from Arc's folder to ArtBrowser's folder, on the same Mac. Arc's folder isn't changed.</li><li>ArtBrowser blocks its own native requests to Arc's and The Browser Company's services (account, sync, analytics, feature flags). Ordinary web traffic from the browser engine isn't filtered.</li></ul></div></div>
 <div class="r"><div class="lab">Aware</div><div class="c"><ul><li>The browser engine is a <b>frozen copy of Chromium 155</b> and gets no security updates. Be careful on sites you don't trust, keep macOS updated, and use a maintained browser for banking.</li><li>The app is signed on your Mac, not by Apple, so it lacks some of the protections Arc had.</li><li>The backup and the copy both hold your data. Treat them like your Arc folder.</li><li>We tested that it works with Arc's services blocked, but we can't prove every part stays silent. A network monitor will show you.</li></ul><p>The official route from the Arc team is <b>Dia</b>, which imports your Arc data.</p></div></div>
-<div class="r"><div class="lab">Check</div><div class="c"><p>Read the installer (<a href="install-artbrowser.sh">plain text</a>) and the two programs we add (<a href="source/Launcher.m">Launcher.m</a>, <a href="source/LocalServices.m">LocalServices.m</a>). Look without changing anything with <code>bash install-artbrowser.sh --check</code>. Watch its network use in Little Snitch or Activity Monitor. It's all open source on <a href="https://github.com/mertdeveci5/artbrowser">GitHub</a>.</p></div></div>
+<div class="r"><div class="lab">Check</div><div class="c"><p>Read the installer (<a href="install-artbrowser.sh">plain text</a>) and the two programs we add (<a href="source/Launcher.m">Launcher.m</a>, <a href="source/LocalServices.m">LocalServices.m</a>). Look without changing anything with <code>curl -fsSL https://arcreborn.cool.computer/install-artbrowser.sh | bash -s -- --check</code>. Watch its network use in Little Snitch or Activity Monitor. It's all open source on <a href="https://github.com/mertdeveci5/artbrowser">GitHub</a>.</p></div></div>
 </section>
 
 <section class="sec" id="how"><h2 class="st">How it's built</h2>
@@ -177,6 +201,23 @@ details p,details ul{margin-top:6px}
 </div>
 
 <script>
+(function(){
+  var get=document.getElementById("get"),run=document.getElementById("run"),btn=document.getElementById("runcopy");
+  if(!get||!run||!btn)return;
+  var label=function(t,ms){btn.textContent=t;setTimeout(function(){btn.textContent="Copy"},ms)};
+  get.addEventListener("click",function(e){
+    e.preventDefault();
+    var still=matchMedia("(prefers-reduced-motion:reduce)").matches;
+    var show=function(){
+      get.hidden=true;get.setAttribute("aria-expanded","true");
+      run.hidden=false;run.classList.add("in");get.parentNode.parentNode.classList.add("open");
+      btn.focus({preventScroll:true});
+    };
+    if(still){show()}else{get.classList.add("out");setTimeout(show,140)}
+    // copy right away: this click is the user's gesture, so the browser allows it
+    if(navigator.clipboard&&navigator.clipboard.writeText){navigator.clipboard.writeText(btn.getAttribute("data-copy")).then(function(){label("Copied",2200)},function(){})}
+  });
+})();
 document.querySelectorAll("[data-copy]").forEach(function(b){
   b.addEventListener("click",function(){
     var done=function(){b.textContent="Copied";setTimeout(function(){b.textContent="Copy"},1600)};
