@@ -2,8 +2,9 @@
 
 The clone has its own app name and an APFS clone of the ArtBrowser profile. It runs
 with the process clock shifted, no network except localhost, and no access to Arc's
-app, data, caches or preferences. It runs at background priority. Original Arc and
-ArtBrowser data are fingerprinted before and after to prove they were not touched.
+app, data, caches or preferences. It runs at background priority. A defined set of
+ArtBrowser files is fingerprinted before and after. That is a spot check, not proof: it does not
+cover Arc's own data (Arc rewrites it while running) or every ArtBrowser store.
 """
 
 import argparse
@@ -235,7 +236,7 @@ def main():
         server.shutdown()
         stop(root / (NAME + ".app"))
         after_real = fingerprint()
-        summary = {"originals_unchanged": before == after_real, "fingerprint_before": before, "fingerprint_after": after_real, "results": results}
+        summary = {"fingerprinted_files_unchanged": before == after_real, "fingerprint_before": before, "fingerprint_after": after_real, "results": results}
         (root / "summary.json").write_text(json.dumps(summary, indent=2) + "\n")
         for path in (Path.home() / "Library/Caches/local.artbrowser.qa", Path.home() / "Library/Preferences/local.artbrowser.qa.plist"):
             if path.is_dir():
@@ -245,7 +246,7 @@ def main():
         if not args.keep:
             shutil.rmtree(root / (NAME + ".app"), ignore_errors=True)
             shutil.rmtree(root / "Profile", ignore_errors=True)
-        print(json.dumps({"originals_unchanged": summary["originals_unchanged"], "summary": str(root / "summary.json")}), flush=True)
+        print(json.dumps({"fingerprinted_files_unchanged": summary["fingerprinted_files_unchanged"], "summary": str(root / "summary.json")}), flush=True)
 
 
 if __name__ == "__main__":

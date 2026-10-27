@@ -4,29 +4,41 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Arc, reborn as Art</title>
-<meta name="description" content="ArtBrowser is an unofficial private copy of the Arc browser on your own Mac, built from your own Arc and your own data, that doesn't need Arc's servers.">
+<meta name="description" content="ArtBrowser is an unofficial private copy of the Arc browser on your own Mac, built from your own Arc and your own data. Everything stays on your Mac.">
 <link rel="icon" href="logo-vintage.png" type="image/png">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<script>document.documentElement.classList.add("js")</script>
 <style>
 :root{
-  --bg:#0b0b0b; --ink:#ffffff; --soft:rgba(255,255,255,.68); --pill:#262626; --pill-hover:#333;
-  --card:#141414; --line:rgba(255,255,255,.12); --red:#ff5a6e; --blue:#2f55ff; --warn:#2a2410;
+  --bg:#0b0b0b; --ink:#ffffff; --soft:rgba(255,255,255,.7); --pill:#262626; --pill-hover:#333;
+  --card:#141414; --card-2:#1a1a1a; --line:rgba(255,255,255,.12); --red:#ff5a6e; --blue:#2f55ff; --green:#34d399; --amber:#ffb703; --warn:#2a2410;
   --serif:Inter,system-ui,-apple-system,"Segoe UI",sans-serif; --sans:Inter,system-ui,-apple-system,"Segoe UI",sans-serif;
   --mono:ui-monospace,Menlo,monospace;
+
+  /* transitions.dev tokens (shared motion scale) */
+  --duration-quick:150ms; --duration-fast:250ms; --duration-medium:350ms; --duration-very-slow:500ms;
+  --ease-smooth-out:cubic-bezier(0.22,1,0.36,1);
+  --acc-expand:250ms; --acc-collapse:250ms; --acc-chevron:250ms; --acc-ease:cubic-bezier(0.22,1,0.36,1);
+  --check-box:150ms; --check-draw:350ms; --check-delay:0ms; --check-uncheck:150ms; --check-ease:cubic-bezier(0.22,1,0.36,1);
+  --tabs-dur:250ms; --tabs-ease:cubic-bezier(0.22,1,0.36,1);
+  --tabs-text-muted:rgba(255,255,255,.7); --tabs-text-active:#0b0b0b; --tabs-bar-bg:rgba(255,255,255,.09); --tabs-pill-bg:#ffffff;
+  --stagger-dur:500ms; --stagger-distance:12px; --stagger-stagger:40ms; --stagger-blur:3px; --stagger-ease:cubic-bezier(0.22,1,0.36,1);
+  --text-soft-dur:200ms; --text-soft-blur:2px; --text-soft-ease:ease-in-out; --text-soft-resize-dur:250ms; --text-soft-resize-ease:cubic-bezier(0.22,1,0.36,1);
 }
 *{box-sizing:border-box}
-html{scroll-behavior:smooth;color-scheme:dark}
-body{margin:0;background:var(--bg);color:var(--ink);font-family:var(--sans);line-height:1.55;-webkit-font-smoothing:antialiased}
-a{color:inherit}
+html{scroll-behavior:smooth;color-scheme:dark;scroll-padding-top:76px}
+body{margin:0;background:var(--bg);color:var(--ink);font-family:var(--sans);line-height:1.6;-webkit-font-smoothing:antialiased}
+a{color:#8fa6ff}
+code{font-family:var(--mono);font-size:.92em}
+:focus-visible{outline:2px solid #8fa6ff;outline-offset:3px;border-radius:8px}
+.draft{background:var(--warn);color:#ffe9a8;text-align:center;padding:8px 16px;font:500 .78rem var(--sans)}
 
-/* draft banner: delete this block when the installer is published */
-.draft{background:var(--warn);color:#ffe9a8;text-align:center;padding:8px 16px;font:500 .78rem var(--sans);letter-spacing:.01em}
-
+/* ============ HERO (unchanged) ============ */
 .hero{min-height:100vh;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;padding:48px 20px 72px}
 .hero img.logo{width:clamp(170px,21vw,300px);height:auto;margin-bottom:clamp(28px,5vw,56px);animation:rise .9s cubic-bezier(.2,.7,.2,1) both}
-h1{font:600 clamp(2.5rem,5.2vw,5rem)/1.08 var(--serif);font-optical-sizing:auto;letter-spacing:-.045em;margin:0 0 clamp(20px,3vw,32px);animation:rise .9s .08s cubic-bezier(.2,.7,.2,1) both}
+h1{font:600 clamp(2.5rem,5.2vw,5rem)/1.08 var(--serif);letter-spacing:-.045em;margin:0 0 clamp(20px,3vw,32px);animation:rise .9s .08s cubic-bezier(.2,.7,.2,1) both}
 .sub{font-size:clamp(1.02rem,1.46vw,1.31rem);line-height:1.42;letter-spacing:-.03em;margin:0;max-width:34em;animation:rise .9s .16s cubic-bezier(.2,.7,.2,1) both}
 .sub span{display:block}
 .pills{display:flex;flex-wrap:wrap;gap:12px;justify-content:center;margin-top:clamp(28px,4vw,40px);animation:rise .9s .24s cubic-bezier(.2,.7,.2,1) both}
@@ -34,106 +46,409 @@ h1{font:600 clamp(2.5rem,5.2vw,5rem)/1.08 var(--serif);font-optical-sizing:auto;
 .pill:hover{background:var(--pill-hover);transform:translateY(-1px)}
 .pill.light{background:var(--ink);color:#0b0b0b}
 .pill.light:hover{background:#e8e8e8}
-.pill[aria-disabled="true"]{background:transparent;color:var(--soft);border:1.5px dashed rgba(255,255,255,.35);cursor:not-allowed}
-.pill[aria-disabled="true"]:hover{transform:none;background:transparent}
 .meta{margin-top:20px;font-size:.85rem;color:var(--soft);animation:rise .9s .3s cubic-bezier(.2,.7,.2,1) both}
 @keyframes rise{from{opacity:0;transform:translateY(14px)}to{opacity:1;transform:none}}
 @media (prefers-reduced-motion:reduce){*{animation:none!important}html{scroll-behavior:auto}}
 
-.wrap{max-width:820px;margin:0 auto;padding:0 20px}
-section{padding:72px 0;border-top:1px solid var(--line)}
-.eyebrow{font:500 .8rem var(--sans);letter-spacing:.12em;text-transform:uppercase;color:var(--soft)}
-h2{font:600 clamp(1.9rem,4.4vw,2.9rem)/1.1 var(--serif);letter-spacing:-.035em;margin:10px 0 30px}
 
-.progress{height:4px;border-radius:99px;background:var(--line);overflow:hidden;margin:0 0 20px}
-.progress b{display:block;height:100%;width:0;background:linear-gradient(90deg,var(--red),var(--blue));transition:width .3s}
-.steps{list-style:none;margin:0;padding:0;display:grid;gap:12px;counter-reset:s}
-.step{background:var(--card);border:1px solid var(--line);border-radius:22px;padding:22px 24px 22px 78px;position:relative;transition:opacity .2s,border-color .2s}
-.step::before{counter-increment:s;content:counter(s);position:absolute;left:22px;top:20px;width:38px;height:38px;border-radius:50%;background:var(--ink);color:#0b0b0b;display:grid;place-items:center;font:600 1rem var(--sans)}
-.step.done{opacity:.55;border-color:var(--blue)}
-.step.done::before{content:"✓";background:var(--blue);color:#fff}
-.step h3{margin:0 0 6px;font:600 1.3rem var(--serif)}
-.step p{margin:6px 0;color:var(--soft)}
-.step b{color:var(--ink);font-weight:600}
-.step label{display:inline-flex;gap:8px;align-items:center;margin-top:10px;font-size:.85rem;color:var(--soft);cursor:pointer}
-.step input[type=checkbox]{accent-color:var(--blue);width:16px;height:16px}
-.cmd{display:flex;gap:12px;align-items:center;justify-content:space-between;background:#000;border:1px solid var(--line);border-radius:12px;padding:12px 14px;margin:12px 0 6px;font:.88rem var(--mono);overflow-x:auto}
-.cmd code{white-space:nowrap}
-.cmd button{flex:none;background:var(--pill);color:var(--ink);border:0;border-radius:999px;padding:7px 14px;font:500 .8rem var(--sans);cursor:pointer}
-.cmd button:hover{background:var(--pill-hover)}
+/* ============ /HERO ============ */
 
+/* ---------- layout ---------- */
+.wrap{max-width:760px;margin:0 auto;padding:0 20px}
+section{padding:84px 0 40px}
+.eyebrow{font:500 .78rem var(--sans);letter-spacing:.12em;text-transform:uppercase;color:var(--soft)}
+h2{font:600 clamp(1.9rem,4.4vw,2.7rem)/1.1 var(--serif);letter-spacing:-.035em;margin:10px 0 12px}
+h3{margin:0;font:600 1.1rem var(--serif);letter-spacing:-.02em}
+.lead{color:var(--soft);font-size:1.06rem;margin:0 0 26px;max-width:38em}
+p{margin:8px 0}.soft{color:var(--soft)}b,strong{font-weight:600}
+
+/* texts reveal (transitions.dev): headings and leads rise in with a soft blur */
+.js .rv{opacity:0;transform:translateY(var(--stagger-distance));filter:blur(var(--stagger-blur));
+  transition:opacity var(--stagger-dur) var(--stagger-ease),transform var(--stagger-dur) var(--stagger-ease),filter var(--stagger-dur) var(--stagger-ease);
+  transition-delay:calc(var(--i,0) * var(--stagger-stagger));will-change:transform,opacity,filter}
+.js .rv.is-shown{opacity:1;transform:none;filter:none}
+
+/* ---------- sticky section nav ---------- */
+.snav{position:fixed;inset:0 0 auto 0;z-index:30;display:flex;justify-content:center;padding:12px 16px;pointer-events:none;
+  opacity:0;transform:translateY(-14px);filter:blur(2px);transition:opacity var(--duration-medium) var(--ease-smooth-out),transform var(--duration-medium) var(--ease-smooth-out),filter var(--duration-medium) var(--ease-smooth-out)}
+.snav.is-on{opacity:1;transform:none;filter:none;pointer-events:auto}
+.snav-bar{display:flex;align-items:center;gap:14px;padding:6px 6px 6px 14px;border-radius:999px;background:rgba(20,20,20,.78);backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px);border:1px solid var(--line);max-width:100%}
+.snav-brand{display:flex;align-items:center;gap:8px;color:var(--ink);text-decoration:none;font-weight:600}
+.snav-brand img{width:22px;height:22px}
+.snav .t-tabs{margin:0}
+.snav .t-tab{font-size:.88rem;text-decoration:none;display:inline-flex;align-items:center}
+.snav .go{padding:9px 16px;font-size:.88rem}
+@media (max-width:720px){.snav .t-tabs{display:none}}
+
+/* ---------- tabs sliding (transitions.dev) ---------- */
+.t-tabs{position:relative;display:inline-flex;align-items:center;gap:3px;padding:3px;border-radius:48px;background:var(--tabs-bar-bg)}
+.t-tab{position:relative;appearance:none;border:0;background:transparent;height:34px;padding:4px 14px;color:var(--tabs-text-muted);cursor:pointer;border-radius:48px;z-index:1;font:500 .92rem var(--sans);transition:color var(--tabs-dur) var(--tabs-ease);white-space:nowrap}
+.t-tab:not([aria-selected="true"]):hover,.t-tab[aria-selected="true"],.t-tab[aria-current="true"]{color:var(--tabs-text-active)}
+.t-tabs-pill{position:absolute;top:3px;left:0;height:34px;width:0;background:var(--tabs-pill-bg);border-radius:48px;transform:translateX(0);transition:transform var(--tabs-dur) var(--tabs-ease),width var(--tabs-dur) var(--tabs-ease);will-change:transform,width;z-index:0;pointer-events:none}
+
+/* ---------- text swap soft (transitions.dev) ---------- */
+.t-text-soft{display:inline-grid;justify-items:start;transition:width var(--text-soft-resize-dur) var(--text-soft-resize-ease)}
+.t-text-soft>span{grid-area:1/1;white-space:pre;transition:filter var(--text-soft-dur) var(--text-soft-ease),opacity var(--text-soft-dur) var(--text-soft-ease)}
+.t-text-soft-new{opacity:0;filter:blur(var(--text-soft-blur))}
+.t-text-soft.is-swapping .t-text-soft-old{opacity:0;filter:blur(var(--text-soft-blur))}
+.t-text-soft.is-swapping .t-text-soft-new{opacity:1;filter:blur(0)}
+
+/* ---------- buttons ---------- */
+.pill.small{padding:12px 22px;font-size:.95rem}
+.pill[aria-disabled="true"]{background:transparent;color:var(--soft);border:1.5px dashed rgba(255,255,255,.3);cursor:not-allowed;transform:none}
+
+/* ---------- readiness check ---------- */
+.ready{background:var(--card);border:1px solid var(--line);border-radius:24px;padding:22px}
+.q{display:flex;align-items:center;justify-content:space-between;gap:12px 18px;flex-wrap:wrap;padding:14px 4px;border-bottom:1px solid var(--line)}
+.q:last-of-type{border-bottom:0}
+.q>span{font-weight:600}.q small{display:block;color:var(--soft);font-weight:400;margin-top:2px}
+.verdict{display:flex;align-items:center;gap:14px;margin-top:10px;padding:16px;border-radius:16px;background:var(--card-2);border:1px solid var(--line);transition:border-color var(--duration-fast) var(--ease-smooth-out),background var(--duration-fast) var(--ease-smooth-out)}
+.verdict[data-state="ok"]{border-color:rgba(52,211,153,.5);background:rgba(52,211,153,.07)}
+.verdict[data-state="no"]{border-color:rgba(255,90,110,.45);background:rgba(255,90,110,.06)}
+.verdict .dot{flex:none;width:12px;height:12px;border-radius:50%;background:var(--green);transition:background var(--duration-fast) var(--ease-smooth-out)}
+.verdict[data-state="no"] .dot{background:var(--red)}
+.verdict .msg{color:var(--ink);min-height:3.2em;display:flex;align-items:center}
+.ready .go{margin-top:16px;display:flex;justify-content:flex-end}
+
+/* ---------- steps: accordion + checkbox (transitions.dev) ---------- */
+.stephead{display:flex;align-items:center;justify-content:space-between;gap:12px;margin:0 0 14px;color:var(--soft);font-size:.9rem}
+.bar{flex:1;height:4px;border-radius:99px;background:var(--line);overflow:hidden}
+.bar b{display:block;height:100%;width:0;background:linear-gradient(90deg,var(--red),var(--blue));transition:width var(--duration-fast) var(--ease-smooth-out)}
+.steps{display:grid;gap:10px}
+.t-acc{background:var(--card);border:1px solid var(--line);border-radius:22px;transition:border-color var(--duration-fast) var(--ease-smooth-out),opacity var(--duration-fast) var(--ease-smooth-out)}
+.t-acc[data-open="true"]{border-color:rgba(255,255,255,.22)}
+.step.is-done{opacity:.6}
+.t-acc-head{appearance:none;width:100%;border:0;background:transparent;color:inherit;font:inherit;text-align:left;cursor:pointer;display:flex;align-items:center;gap:14px;padding:18px 20px;border-radius:22px}
+.num{flex:none;width:32px;height:32px;border-radius:50%;background:var(--ink);color:#0b0b0b;display:grid;place-items:center;font:600 .92rem var(--sans);transition:background var(--duration-fast) var(--ease-smooth-out),color var(--duration-fast) var(--ease-smooth-out)}
+.step.is-done .num{background:var(--blue);color:#fff}
+.t-acc-head .ttl{flex:1;font:600 1.1rem var(--serif);letter-spacing:-.02em}
+.t-acc-head .sub2{display:block;color:var(--soft);font:400 .88rem var(--sans);letter-spacing:0;margin-top:2px}
+.t-acc-chevron{display:inline-flex;transform:scaleY(1);transform-origin:center;transition:transform var(--acc-chevron) var(--acc-ease);color:var(--soft)}
+.t-acc-chevron svg{width:16px;height:16px;fill:none;stroke:currentColor;stroke-width:1.6;stroke-linecap:round;stroke-linejoin:round}
+.t-acc-chevron path{vector-effect:non-scaling-stroke}
+.t-acc[data-open="true"]>.t-acc-head .t-acc-chevron{transform:scaleY(-1)}
+.t-acc-panel{display:grid;grid-template-rows:0fr;transition:grid-template-rows var(--acc-collapse) var(--acc-ease)}
+.t-acc[data-open="true"]>.t-acc-panel{grid-template-rows:1fr;transition:grid-template-rows var(--acc-expand) var(--acc-ease)}
+.t-acc-panel-inner{overflow:hidden;opacity:0;filter:blur(2px);transition:opacity var(--acc-collapse) var(--acc-ease),filter var(--acc-collapse) var(--acc-ease)}
+.t-acc[data-open="true"]>.t-acc-panel>.t-acc-panel-inner{opacity:1;filter:blur(0);transition:opacity var(--acc-expand) var(--acc-ease),filter var(--acc-expand) var(--acc-ease)}
+.body{padding:0 20px 20px 66px;color:var(--soft)}
+.body p{margin:6px 0}.body b{color:var(--ink)}
+@media (max-width:600px){.body{padding-left:20px}}
+
+.t-check{flex:none;appearance:none;width:26px;height:26px;border-radius:8px;border:1.5px solid rgba(255,255,255,.35);background:transparent;display:grid;place-items:center;cursor:pointer;padding:0;transition:background var(--check-box) var(--check-ease),box-shadow var(--check-box) var(--check-ease),border-color var(--check-box) var(--check-ease)}
+.t-check:hover{border-color:#fff}
+.t-check[aria-checked="true"]{background:var(--blue);border-color:var(--blue)}
+.t-check svg{width:12px;height:12px;overflow:visible}
+.t-check svg path{fill:none;stroke:#fff;stroke-width:1.6;stroke-linecap:round;stroke-linejoin:round;stroke-dasharray:var(--check-len,15);stroke-dashoffset:var(--check-len,15);transition:stroke-dashoffset var(--check-uncheck) var(--check-ease)}
+.t-check[aria-checked="true"] svg path{stroke-dashoffset:0;transition:stroke-dashoffset var(--check-draw) var(--check-ease) var(--check-delay)}
+
+.cmd{display:flex;gap:12px;align-items:center;justify-content:space-between;background:#000;border:1px solid var(--line);border-radius:12px;padding:12px 14px;margin:12px 0 8px;font:.84rem var(--mono);overflow-x:auto}
+.cmd code{white-space:nowrap;color:#e8ebf5}
+.copy{flex:none;background:var(--pill);color:var(--ink);border:0;border-radius:999px;padding:8px 14px;font:500 .8rem var(--sans);cursor:pointer;transition:background .15s}
+.copy:hover{background:var(--pill-hover)}
+.hint{margin-top:10px;padding:10px 14px;border-radius:12px;background:rgba(255,255,255,.05);font-size:.9rem}
+.hint b{color:var(--ink)}
+
+.finish{display:grid;grid-template-rows:0fr;transition:grid-template-rows var(--duration-medium) var(--ease-smooth-out);margin-top:10px}
+.finish.is-on{grid-template-rows:1fr}
+.finish>div{overflow:hidden}
+.finish-card{background:linear-gradient(180deg,rgba(47,85,255,.14),rgba(255,90,110,.08));border:1px solid rgba(143,166,255,.4);border-radius:22px;padding:26px 22px;text-align:center;opacity:0;filter:blur(3px);transform:translateY(10px);transition:opacity var(--duration-very-slow) var(--ease-smooth-out) .1s,filter var(--duration-very-slow) var(--ease-smooth-out) .1s,transform var(--duration-very-slow) var(--ease-smooth-out) .1s}
+.finish.is-on .finish-card{opacity:1;filter:none;transform:none}
+.bigcheck{width:68px;height:68px;margin:0 auto 10px;display:block}
+.bigcheck circle{fill:none;stroke:var(--blue);stroke-width:3;opacity:.35}
+.bigcheck path{fill:none;stroke:#fff;stroke-width:4;stroke-linecap:round;stroke-linejoin:round;stroke-dasharray:48;stroke-dashoffset:48;transition:stroke-dashoffset var(--duration-very-slow) var(--ease-smooth-out) .25s}
+.finish.is-on .bigcheck path{stroke-dashoffset:0}
+.finish h3{font-size:1.5rem;margin-bottom:6px}
+.finish ul{text-align:left;max-width:30em;margin:14px auto 0;padding-left:20px;color:var(--soft)}
+.finish li{margin:6px 0}
+
+/* ---------- installer output ---------- */
+.term{background:#000;border:1px solid var(--line);border-radius:14px;padding:16px 18px;font:.82rem/1.7 var(--mono);color:#d7dbe6;overflow-x:auto;margin:14px 0 8px;white-space:pre}
+.term .h{color:#fff;font-weight:600}.term .ok{color:var(--green)}
+.term .tl{display:block}
+.js .term .tl{opacity:0;transform:translateY(var(--stagger-distance));filter:blur(var(--stagger-blur));transition:opacity var(--stagger-dur) var(--stagger-ease),transform var(--stagger-dur) var(--stagger-ease),filter var(--stagger-dur) var(--stagger-ease);transition-delay:calc(var(--i) * 70ms)}
+.js .term.is-shown .tl{opacity:1;transform:none;filter:none}
+.replay{background:transparent;border:0;color:var(--soft);font:500 .82rem var(--sans);cursor:pointer;padding:4px 0}
+.replay:hover{color:var(--ink)}
+.acc-list{display:grid;gap:8px;margin-top:14px}
+.acc-list .t-acc{border-radius:16px}
+.acc-list .t-acc-head{padding:14px 16px;border-radius:16px}
+.acc-list .t-acc-head .ttl{font:600 1rem var(--sans);letter-spacing:-.01em}
+.tag{flex:none;font:600 .72rem var(--mono);color:var(--soft);min-width:3.2em}
+.acc-list .body{padding:0 16px 16px 16px}
+table{width:100%;border-collapse:collapse;font-size:.9rem;margin:6px 0}
+th,td{text-align:left;padding:9px 8px;border-bottom:1px solid var(--line);vertical-align:top;color:var(--soft)}
+th{color:var(--ink);font-weight:600}td:first-child{color:var(--ink);font-family:var(--mono);font-size:.82rem}
+
+/* small screens: answers wrap, segmented controls fill their row */
+p code,li code,td code,.hint code{overflow-wrap:anywhere}
+.verdict .t-text-soft{display:grid;width:100%}
+.verdict .t-text-soft>span{white-space:normal}
+@media (max-width:520px){
+  .ready{padding:16px}
+  .q .t-tabs{width:100%}
+  .q .t-tab{flex:1;padding:4px 6px;font-size:.86rem;min-width:0}
+  .ready .go{justify-content:stretch}.ready .go .pill{width:100%;justify-content:center}
+}
+
+/* ---------- cards, notes, flow ---------- */
 .two{display:grid;grid-template-columns:1fr 1fr;gap:12px}
-.card{background:var(--card);border:1px solid var(--line);border-radius:22px;padding:24px}
-.card h3{margin:0 0 12px;font:600 1.3rem var(--serif)}
-.card ul{margin:0;padding-left:20px;color:var(--soft)}
-.card li{margin:7px 0}
-.ok h3::before{content:"● ";color:#34d399}.no h3::before{content:"● ";color:var(--red)}
-.note{background:var(--card);border:1px solid var(--line);border-left:4px solid #ffb703;border-radius:16px;padding:18px 20px;margin-top:14px;color:var(--soft)}
+.card{background:var(--card);border:1px solid var(--line);border-radius:22px;padding:22px 24px}
+.card h3{margin-bottom:10px}.card ul{margin:0;padding-left:20px;color:var(--soft)}.card li{margin:7px 0}
+.ok h3::before{content:"● ";color:var(--green)}.no h3::before{content:"● ";color:var(--red)}.mid h3::before{content:"● ";color:var(--amber)}
+.note{background:var(--card);border:1px solid var(--line);border-left:4px solid var(--amber);border-radius:16px;padding:18px 20px;margin-top:12px;color:var(--soft)}
 .note b{color:var(--ink)}
-@media (max-width:700px){.two{grid-template-columns:1fr}.step{padding-left:68px}.step::before{left:18px}}
-
-footer{border-top:1px solid var(--line);padding:36px 0 56px;color:var(--soft);font-size:.88rem}
+@media (max-width:700px){.two{grid-template-columns:1fr}}
+.flow{display:grid;gap:8px;margin:18px 0}
+.flow .row{display:grid;grid-template-columns:1fr 32px 1fr;align-items:center;gap:8px}
+.flow .box{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:12px 14px;font-size:.92rem}
+.flow .box small{display:block;color:var(--soft);margin-top:2px}.flow .arrow{text-align:center;color:var(--soft)}.flow .mine{border-color:var(--blue)}
+@media (max-width:700px){.flow .row{grid-template-columns:1fr}.flow .arrow{display:none}}
+footer{border-top:1px solid var(--line);margin-top:60px;padding:36px 0 64px;color:var(--soft);font-size:.88rem}
 footer p{max-width:60em;margin:8px 0}
 
+@media (prefers-reduced-motion:reduce){
+  *{animation:none!important;transition:none!important}
+  html{scroll-behavior:auto}
+  .js .rv,.js .term .tl{opacity:1!important;transform:none!important;filter:none!important}
+  .snav{transition:none!important}
+}
 </style>
 </head>
 <body>
 <div class="draft">Beta: tested on one Mac so far. Please tell us what you see.</div>
 
+<nav class="snav" id="snav" aria-label="Sections">
+  <div class="snav-bar">
+    <a class="snav-brand" href="#top"><img src="logo-vintage.png" alt="">Art</a>
+    <div class="t-tabs" id="navtabs">
+      <span class="t-tabs-pill" aria-hidden="true"></span>
+      <a class="t-tab" href="#check" data-sec="check">Check</a>
+      <a class="t-tab" href="#install" data-sec="install">Install</a>
+      <a class="t-tab" href="#privacy" data-sec="privacy">Privacy</a>
+      <a class="t-tab" href="#how" data-sec="how">How</a>
+      <a class="t-tab" href="#faq" data-sec="faq">FAQ</a>
+    </div>
+    <a class="pill light go" href="install-artbrowser.sh" download>Download</a>
+  </div>
+</nav>
+
 <header class="hero" id="top">
-  <img class="logo" id="heroLogo" src="logo-vintage.png" alt="Art logo">
+  <img class="logo" src="logo-vintage.png" alt="Art logo">
   <h1>Arc, reborn as Art</h1>
   <p class="sub"><span>Arc closes on December 22, 2026.</span><span>ArtBrowser is a private copy of the Arc on your Mac that doesn't need Arc's servers.</span></p>
   <div class="pills">
     <a id="download" class="pill light" href="install-artbrowser.sh" download>Download installer</a>
-    <a class="pill" href="#steps">Read more</a>
+    <a class="pill" href="#before">Read more</a>
   </div>
-  <div class="meta">macOS · Apple Silicon · needs Arc 1.170.0 or 1.169.0 installed</div>
+  <div class="meta">macOS · Apple Silicon · needs Arc 1.170.0 or 1.169.0 installed · everything stays on your Mac</div>
 </header>
 
 <main>
-  <div class="wrap"><section id="steps">
-    <div class="eyebrow">Step by step · about 10 minutes</div>
-    <h2>Five steps to switch</h2>
-    <div class="progress" aria-hidden="true"><b id="bar"></b></div>
-    <ol class="steps">
-      <li class="step"><h3>Check your Arc version</h3>
-        <p>Open Arc, then choose <b>Arc → About Arc</b> in the menu bar. It should say <b>1.170.0</b> or <b>1.169.0</b>. The installer stops if it's anything else, so it never builds something that wasn't tested.</p>
-        <label><input type="checkbox"> My Arc version is supported</label></li>
-      <li class="step"><h3>Quit Arc completely</h3>
-        <p>Press <b>⌘Q</b> in Arc. Closing the window isn't enough. The installer takes a clean copy of your data, and that only works while Arc is closed. Save anything you're typing first.</p>
-        <label><input type="checkbox"> Arc is quit</label></li>
-      <li class="step"><h3>Run one command</h3>
-        <p>Open <b>Terminal</b> (⌘Space, type “Terminal”), paste this and press Return:</p>
-        <div class="cmd"><code>curl -fsSL https://arcreborn.cool.computer/install-artbrowser.sh | bash</code><button type="button" data-copy="curl -fsSL https://arcreborn.cool.computer/install-artbrowser.sh | bash">Copy</button></div>
-        <p>It checks your Mac, backs up your Arc data, builds <b>ArtBrowser</b> in your Applications folder and leaves your original Arc untouched. It takes about a minute. Prefer a file? Use <b>Download installer</b> above, then run <b>bash ~/Downloads/install-artbrowser.sh</b>.</p>
-        <label><input type="checkbox"> The installer said it finished</label></li>
-      <li class="step"><h3>Open ArtBrowser and allow Keychain access</h3>
-        <p>Open <b>ArtBrowser</b> from your <b>Applications</b> folder. macOS will ask to use <b>“Arc Safe Storage”</b>. Click <b>Always Allow</b>, because that's what unlocks your saved logins and cookies.</p>
-        <label><input type="checkbox"> My Spaces and tabs are there</label></li>
-      <li class="step"><h3>Keep Arc installed for now</h3>
-        <p>Don't delete Arc or its Keychain entry <b>“Arc Safe Storage”</b>. Your logins depend on that entry. ArtBrowser is a one-time copy, and changes in either browser do not sync to the other.</p>
-        <label><input type="checkbox"> Understood</label></li>
-    </ol>
+  <!-- 1. Is your Mac ready? -->
+  <div class="wrap"><section id="check">
+    <div class="eyebrow rv">Before you start · 20 seconds</div>
+    <h2 class="rv" style="--i:1">Is your Mac ready?</h2>
+    <p class="lead rv" style="--i:2">Two quick questions. The installer checks all of this itself and stops, changing nothing, if something is off, but it's quicker to know first.</p>
+    <div class="ready rv" style="--i:3">
+      <div class="q"><div><span>My Mac has</span><small> menu → About This Mac → Chip</small></div>
+        <div class="t-tabs" data-group="chip"><span class="t-tabs-pill" aria-hidden="true"></span>
+          <button class="t-tab" role="tab" aria-selected="true" data-v="apple">Apple chip (M1–M4)</button>
+          <button class="t-tab" role="tab" aria-selected="false" data-v="intel">Intel</button></div></div>
+      <div class="q"><div><span>My Arc is version</span><small> Arc menu → About Arc</small></div>
+        <div class="t-tabs" data-group="arc"><span class="t-tabs-pill" aria-hidden="true"></span>
+          <button class="t-tab" role="tab" aria-selected="true" data-v="170">1.170.0</button>
+          <button class="t-tab" role="tab" aria-selected="false" data-v="169">1.169.0</button>
+          <button class="t-tab" role="tab" aria-selected="false" data-v="other">Another</button>
+          <button class="t-tab" role="tab" aria-selected="false" data-v="none">No Arc</button></div></div>
+      <div class="verdict" id="verdict" data-state="ok" aria-live="polite"><span class="dot"></span><div class="msg"><span class="t-text-soft" id="verdictText" data-text="You're ready. Quit Arc, run one command, and you'll be done in about a minute."><span>You're ready. Quit Arc, run one command, and you'll be done in about a minute.</span></span></div></div>
+      <div class="go"><a class="pill light small" id="goInstall" href="#install">Continue to install</a></div>
+    </div>
   </section></div>
 
-  <div class="wrap"><section id="works">
-    <div class="eyebrow">The honest list</div>
-    <h2>What works, and what doesn't</h2>
-    <div class="two">
-      <div class="card ok"><h3>Works</h3><ul>
-        <li>Your Spaces, folders, pinned and open tabs</li>
-        <li>History, bookmarks and saved passwords</li>
-        <li>Your extensions</li>
-        <li>Website logins that were saved on your Mac</li>
+  <!-- 2. Install -->
+  <div class="wrap"><section id="install">
+    <div class="eyebrow rv">Install · about a minute</div>
+    <h2 class="rv" style="--i:1">Three steps</h2>
+    <p class="lead rv" style="--i:2">Tick each step as you go. The next one opens by itself.</p>
+    <div class="stephead rv" style="--i:3"><span id="stepCount">Step 1 of 3</span><div class="bar"><b id="bar"></b></div></div>
+    <div class="steps" id="steps">
+      <div class="t-acc step" data-open="true" data-step="1">
+        <div class="t-acc-head" role="button" tabindex="0" aria-expanded="true">
+          <span class="num">1</span><span class="ttl">Quit Arc completely<span class="sub2">So your data copies cleanly</span></span>
+          <button class="t-check" role="checkbox" aria-checked="false" aria-label="Mark step 1 done"><svg viewBox="0 0 10.1668 10.1668"><path d="M1 5.52L3.92 9.17L9.17 1"/></svg></button>
+          <span class="t-acc-chevron"><svg viewBox="0 0 16 16"><path d="M4 6.5L8 10.5L12 6.5"/></svg></span></div>
+        <div class="t-acc-panel"><div class="t-acc-panel-inner"><div class="body">
+          <p>Press <b>⌘Q</b> in Arc. Closing the window isn't enough. Save anything you're typing first.</p>
+          <div class="hint"><b>Not sure it's closed?</b> Look for the Arc icon in your Dock: a dot under it means it's still running.</div>
+        </div></div></div>
+      </div>
+
+      <div class="t-acc step" data-open="false" data-step="2">
+        <div class="t-acc-head" role="button" tabindex="0" aria-expanded="false">
+          <span class="num">2</span><span class="ttl">Run one command<span class="sub2">No questions, no password</span></span>
+          <button class="t-check" role="checkbox" aria-checked="false" aria-label="Mark step 2 done"><svg viewBox="0 0 10.1668 10.1668"><path d="M1 5.52L3.92 9.17L9.17 1"/></svg></button>
+          <span class="t-acc-chevron"><svg viewBox="0 0 16 16"><path d="M4 6.5L8 10.5L12 6.5"/></svg></span></div>
+        <div class="t-acc-panel"><div class="t-acc-panel-inner"><div class="body">
+          <p>Open <b>Terminal</b> (⌘Space, type “Terminal”, press Return), paste this and press Return:</p>
+          <div class="cmd"><code>curl -fsSL https://arcreborn.cool.computer/install-artbrowser.sh | bash</code><button class="copy" type="button" data-copy="curl -fsSL https://arcreborn.cool.computer/install-artbrowser.sh | bash"><span class="t-text-soft" data-text="Copy"><span>Copy</span></span></button></div>
+          <p>It takes about 40 seconds and prints each stage (see below). When it says <b>“ArtBrowser is installed”</b>, tick this step.</p>
+          <div class="hint"><b>Want to read it first?</b> <a href="install-artbrowser.sh" download>Download the installer</a>, open it in a text editor, then run <code>bash ~/Downloads/install-artbrowser.sh --check</code>. That only looks at your Mac and changes nothing.</div>
+        </div></div></div>
+      </div>
+
+      <div class="t-acc step" data-open="false" data-step="3">
+        <div class="t-acc-head" role="button" tabindex="0" aria-expanded="false">
+          <span class="num">3</span><span class="ttl">Open ArtBrowser and allow Keychain<span class="sub2">One-time macOS question</span></span>
+          <button class="t-check" role="checkbox" aria-checked="false" aria-label="Mark step 3 done"><svg viewBox="0 0 10.1668 10.1668"><path d="M1 5.52L3.92 9.17L9.17 1"/></svg></button>
+          <span class="t-acc-chevron"><svg viewBox="0 0 16 16"><path d="M4 6.5L8 10.5L12 6.5"/></svg></span></div>
+        <div class="t-acc-panel"><div class="t-acc-panel-inner"><div class="body">
+          <p>Open <b>ArtBrowser</b> from the <b>Applications folder inside your home folder</b>, or run <code>open ~/Applications/ArtBrowser.app</code>.</p>
+          <p>macOS asks to use <b>“Arc Safe Storage”</b>. Enter your Mac password (or use Touch ID) and click <b>Always Allow</b>. That unlocks your saved logins and cookies.</p>
+          <div class="hint"><b>You should now see</b> your Spaces, folders and tabs exactly as they were in Arc.</div>
+        </div></div></div>
+      </div>
+    </div>
+
+    <div class="finish" id="finish"><div><div class="finish-card">
+      <svg class="bigcheck" viewBox="0 0 64 64" aria-hidden="true"><circle cx="32" cy="32" r="29"/><path d="M19 33 L28 42 L46 22"/></svg>
+      <h3>You're on Art.</h3>
+      <p class="soft">Your Spaces and tabs came with you. Three things worth knowing:</p>
+      <ul>
+        <li><b>Make it your default browser</b> so links open here: System Settings → Desktop &amp; Dock → Default web browser → ArtBrowser.</li>
+        <li><b>Keep Arc and its Keychain entry.</b> Don't delete “Arc Safe Storage”. Your saved logins depend on it.</li>
+        <li><b>It's a one-time copy.</b> Changes in Arc and ArtBrowser don't sync, so use ArtBrowser from now on.</li>
+      </ul>
+    </div></div></div>
+  </section></div>
+
+  <!-- 3. What the installer does -->
+  <div class="wrap"><section id="happens">
+    <div class="eyebrow rv">What the installer does</div>
+    <h2 class="rv" style="--i:1">When you run it, this happens</h2>
+    <p class="lead rv" style="--i:2">This is the real output from a real run. Tap a stage to see what it did.</p>
+    <div class="term" id="term"><span class="tl h" style="--i:0">▸ Checking your Mac</span><span class="tl" style="--i:1">  <span class="ok">✓</span> Apple Silicon, macOS 26.6.2</span><span class="tl" style="--i:2">  <span class="ok">✓</span> Arc 1.170.0 (89123)</span><span class="tl" style="--i:3">  <span class="ok">✓</span> Arc data found (saved sidebar and session)</span><span class="tl" style="--i:4">  <span class="ok">✓</span> Arc's data folder is self-contained</span><span class="tl" style="--i:5">  <span class="ok">✓</span> ArtBrowser is not installed yet</span><span class="tl" style="--i:6">  <span class="ok">✓</span> Arc is not running</span><span class="tl" style="--i:7">  <span class="ok">✓</span> Enough free space</span><span class="tl h" style="--i:8">▸ 1/5 Backing up your Arc data</span><span class="tl h" style="--i:9">▸ 2/5 Getting the launcher   <span class="ok">✓</span> Launcher verified</span><span class="tl h" style="--i:10">▸ 3/5 Building ArtBrowser.app  <span class="ok">✓</span> Built and signed on this Mac</span><span class="tl h" style="--i:11">▸ 4/5 Giving ArtBrowser its own copy of your data</span><span class="tl h" style="--i:12">▸ 5/5 Putting it in place</span><span class="tl" style="--i:13"><span class="ok">✓</span> ArtBrowser is installed: ~/Applications/ArtBrowser.app</span></div>
+    <button class="replay" id="replay" type="button">↻ Replay</button>
+    <div class="acc-list" data-exclusive>
+      <div class="t-acc" data-open="false"><div class="t-acc-head" role="button" tabindex="0" aria-expanded="false"><span class="tag">CHECK</span><span class="ttl">Looks before it touches anything</span><span class="t-acc-chevron"><svg viewBox="0 0 16 16"><path d="M4 6.5L8 10.5L12 6.5"/></svg></span></div>
+        <div class="t-acc-panel"><div class="t-acc-panel-inner"><div class="body"><p>Apple Silicon, a supported Arc version, Arc's saved data, Arc closed, enough space, and no links in Arc's data that point outside it. If any check fails it stops with a plain message and changes nothing.</p></div></div></div></div>
+      <div class="t-acc" data-open="false"><div class="t-acc-head" role="button" tabindex="0" aria-expanded="false"><span class="tag">1/5</span><span class="ttl">Backs up your Arc data</span><span class="t-acc-chevron"><svg viewBox="0 0 16 16"><path d="M4 6.5L8 10.5L12 6.5"/></svg></span></div>
+        <div class="t-acc-panel"><div class="t-acc-panel-inner"><div class="body"><p>A copy goes to <code>~/Library/Application Support/ArtBrowserBackup</code>. It costs almost no extra space, because your Mac shares unchanged data between copies.</p></div></div></div></div>
+      <div class="t-acc" data-open="false"><div class="t-acc-head" role="button" tabindex="0" aria-expanded="false"><span class="tag">2/5</span><span class="ttl">Gets the launcher</span><span class="t-acc-chevron"><svg viewBox="0 0 16 16"><path d="M4 6.5L8 10.5L12 6.5"/></svg></span></div>
+        <div class="t-acc-panel"><div class="t-acc-panel-inner"><div class="body"><p>Downloads one small file (about 1.9 MB, mostly the icon) and checks it against a fingerprint (SHA-256) written into the installer. If it doesn't match, it stops. This is the only thing downloaded, and nothing about you is sent.</p></div></div></div></div>
+      <div class="t-acc" data-open="false"><div class="t-acc-head" role="button" tabindex="0" aria-expanded="false"><span class="tag">3/5</span><span class="ttl">Builds ArtBrowser.app</span><span class="t-acc-chevron"><svg viewBox="0 0 16 16"><path d="M4 6.5L8 10.5L12 6.5"/></svg></span></div>
+        <div class="t-acc-panel"><div class="t-acc-panel-inner"><div class="body"><p>Copies your Arc app, renames it, adds the launcher and the new icon, switches updates off, and signs it on your Mac. Your Arc app is not changed.</p></div></div></div></div>
+      <div class="t-acc" data-open="false"><div class="t-acc-head" role="button" tabindex="0" aria-expanded="false"><span class="tag">4/5</span><span class="ttl">Copies your data</span><span class="t-acc-chevron"><svg viewBox="0 0 16 16"><path d="M4 6.5L8 10.5L12 6.5"/></svg></span></div>
+        <div class="t-acc-panel"><div class="t-acc-panel-inner"><div class="body"><p>Your Spaces, tabs, history, extensions and logins go into ArtBrowser's own data folder. Your Arc data is not changed.</p></div></div></div></div>
+      <div class="t-acc" data-open="false"><div class="t-acc-head" role="button" tabindex="0" aria-expanded="false"><span class="tag">5/5</span><span class="ttl">Puts it in place</span><span class="t-acc-chevron"><svg viewBox="0 0 16 16"><path d="M4 6.5L8 10.5L12 6.5"/></svg></span></div>
+        <div class="t-acc-panel"><div class="t-acc-panel-inner"><div class="body"><p>Moves the finished app to <code>~/Applications</code>. If anything fails before this, everything it made is removed again and Arc is untouched.</p></div></div></div></div>
+    </div>
+    <div class="acc-list">
+      <div class="t-acc" data-open="false"><div class="t-acc-head" role="button" tabindex="0" aria-expanded="false"><span class="ttl">If the installer stops with a message</span><span class="t-acc-chevron"><svg viewBox="0 0 16 16"><path d="M4 6.5L8 10.5L12 6.5"/></svg></span></div>
+        <div class="t-acc-panel"><div class="t-acc-panel-inner"><div class="body"><table>
+          <tr><th>It says</th><th>What to do</th></tr>
+          <tr><td>Arc is still running</td><td>Press ⌘Q in Arc (closing the window isn't enough) and run it again.</td></tr>
+          <tr><td>Your Arc is version …</td><td>Only 1.170.0 and 1.169.0 are supported. Update Arc if it offers it.</td></tr>
+          <tr><td>Intel Mac</td><td>Not supported yet: it has only been tested on Apple Silicon.</td></tr>
+          <tr><td>Arc has no saved sign-in</td><td>Open Arc, sign in, quit it with ⌘Q, and run the installer again.</td></tr>
+          <tr><td>Already installed</td><td>Run it with <code>--uninstall</code> first (see below), then install again.</td></tr>
+          <tr><td>Checksum does not match</td><td>Don't use it. Download the installer again.</td></tr>
+        </table></div></div></div></div>
+      <div class="t-acc" data-open="false"><div class="t-acc-head" role="button" tabindex="0" aria-expanded="false"><span class="ttl">Uninstalling</span><span class="t-acc-chevron"><svg viewBox="0 0 16 16"><path d="M4 6.5L8 10.5L12 6.5"/></svg></span></div>
+        <div class="t-acc-panel"><div class="t-acc-panel-inner"><div class="body"><p>Quit ArtBrowser, then run <code>curl -fsSL https://arcreborn.cool.computer/install-artbrowser.sh | bash -s -- --uninstall</code>. It asks you to confirm, removes the ArtBrowser app and its data folder, and keeps your Arc, your Arc data and the backup.</p></div></div></div></div>
+    </div>
+  </section></div>
+
+  <!-- 4. Privacy -->
+  <div class="wrap"><section id="privacy">
+    <div class="eyebrow rv">Privacy and security</div>
+    <h2 class="rv" style="--i:1">Everything stays on your Mac</h2>
+    <p class="lead rv" style="--i:2">There is no account, no server of ours and nothing to sign up for. We never receive your tabs, history, passwords or anything else.</p>
+    <div class="two rv" style="--i:3">
+      <div class="card ok"><h3>What stays local</h3><ul>
+        <li>The installer only <b>downloads</b> itself and one small launcher file. It uploads nothing.</li>
+        <li>Your data is <b>copied</b> from Arc's folder to ArtBrowser's folder, on the same Mac.</li>
+        <li>The backup stays in your own Library folder.</li>
+        <li>ArtBrowser blocks calls to Arc's and The Browser Company's services (account, sync, analytics, feature flags).</li>
+        <li>You can read every line of the installer and the two source files first.</li>
       </ul></div>
-      <div class="card no"><h3>Turned off</h3><ul>
-        <li>Arc account, sync and sharing links</li>
-        <li>Arc Max and other AI features</li>
-        <li>Automatic updates, including browser security fixes</li>
+      <div class="card no"><h3>What to be aware of</h3><ul>
+        <li>Browsing is normal browsing: the sites you visit see you, as in any browser.</li>
+        <li>The browser engine is <b>frozen</b> and gets no security updates.</li>
+        <li>The app is signed on your Mac, not by Apple, so it lacks the extra macOS protections Arc had.</li>
+        <li>The backup and the copy both hold your data. Treat them like your Arc folder.</li>
+        <li>We tested that it works with Arc's services blocked, but we can't prove every part stays silent. Use a network monitor to check.</li>
       </ul></div>
     </div>
-    <div class="note"><b>Please read:</b> the engine inside is a frozen copy of Chromium 155. It won't get security updates, so be careful on sites you don't trust and keep macOS up to date. For banking and other sensitive accounts, use a browser that is still maintained. The official route from the Arc team is <b>Dia</b>, which imports your Arc data.</div>
+    <div class="note rv" style="--i:4"><b>Please read:</b> the engine inside is a frozen copy of Chromium 155. Be careful on sites you don't trust, keep macOS up to date, and use a maintained browser for banking and other sensitive accounts. The official route from the Arc team is <b>Dia</b>, which imports your Arc data.</div>
+    <div class="acc-list"><div class="t-acc" data-open="false"><div class="t-acc-head" role="button" tabindex="0" aria-expanded="false"><span class="ttl">Check it yourself</span><span class="t-acc-chevron"><svg viewBox="0 0 16 16"><path d="M4 6.5L8 10.5L12 6.5"/></svg></span></div>
+      <div class="t-acc-panel"><div class="t-acc-panel-inner"><div class="body"><ul>
+        <li>Read the installer: <a href="install-artbrowser.sh">install-artbrowser.sh</a>. It's plain text.</li>
+        <li>Read the two programs we add: <a href="source/Launcher.m">Launcher.m</a> and <a href="source/LocalServices.m">LocalServices.m</a>.</li>
+        <li>Look without changing anything: <code>bash install-artbrowser.sh --check</code>.</li>
+        <li>Watch its network use in any monitor (Little Snitch, or Activity Monitor → Network).</li>
+        <li>Everything is open source on <a href="https://github.com/mertdeveci5/artbrowser">GitHub</a>.</li>
+      </ul></div></div></div></div></div>
+  </section></div>
+
+  <!-- 5. How it's built -->
+  <div class="wrap"><section id="how">
+    <div class="eyebrow rv">How it's built</div>
+    <h2 class="rv" style="--i:1">A copy of Arc, plus two small pieces</h2>
+    <p class="lead rv" style="--i:2">We don't have Arc's source code and we haven't rebuilt Arc. ArtBrowser is your own Arc app, copied and lightly adapted, so it behaves like Arc but doesn't depend on Arc's servers.</p>
+    <div class="flow rv" style="--i:3">
+      <div class="row"><div class="box">Your <b>Arc.app</b><small>already on your Mac</small></div><div class="arrow">→</div><div class="box mine"><b>ArtBrowser.app</b><small>a copy, renamed, updates switched off</small></div></div>
+      <div class="row"><div class="box">Your <b>Arc data</b><small>Spaces, tabs, history, logins</small></div><div class="arrow">→</div><div class="box mine"><b>ArtBrowser's own data folder</b><small>a separate copy, so Arc's is never touched</small></div></div>
+      <div class="row"><div class="box mine"><b>Launcher</b><small>ours · starts it on its own data</small></div><div class="arrow">+</div><div class="box mine"><b>Local-services layer</b><small>ours · keeps cloud features off</small></div></div>
+    </div>
+    <div class="acc-list" data-exclusive>
+      <div class="t-acc" data-open="false"><div class="t-acc-head" role="button" tabindex="0" aria-expanded="false"><span class="tag">WHY</span><span class="ttl">Why does Arc need its servers at all?</span><span class="t-acc-chevron"><svg viewBox="0 0 16 16"><path d="M4 6.5L8 10.5L12 6.5"/></svg></span></div>
+        <div class="t-acc-panel"><div class="t-acc-panel-inner"><div class="body"><p>Arc signs you in to an account and syncs through Apple's iCloud and Google's Firebase. When the account service disappears, Arc could refuse to start or sign you out.</p></div></div></div></div>
+      <div class="t-acc" data-open="false"><div class="t-acc-head" role="button" tabindex="0" aria-expanded="false"><span class="tag">1</span><span class="ttl">The launcher</span><span class="t-acc-chevron"><svg viewBox="0 0 16 16"><path d="M4 6.5L8 10.5L12 6.5"/></svg></span></div>
+        <div class="t-acc-panel"><div class="t-acc-panel-inner"><div class="body"><p>Starts the copied browser against ArtBrowser's own data folder, refuses to ever use Arc's, and turns updates and sync off.</p></div></div></div></div>
+      <div class="t-acc" data-open="false"><div class="t-acc-head" role="button" tabindex="0" aria-expanded="false"><span class="tag">2</span><span class="ttl">The local-services layer</span><span class="t-acc-chevron"><svg viewBox="0 0 16 16"><path d="M4 6.5L8 10.5L12 6.5"/></svg></span></div>
+        <div class="t-acc-panel"><div class="t-acc-panel-inner"><div class="body"><p>A small library loaded into the app. It supplies your saved local identity so Arc starts without signing in, reports iCloud as “no account”, rejects requests to Arc's and The Browser Company's services before they leave your Mac, and keeps ArtBrowser's own icon in your Dock.</p></div></div></div></div>
+      <div class="t-acc" data-open="false"><div class="t-acc-head" role="button" tabindex="0" aria-expanded="false"><span class="tag">3</span><span class="ttl">Signed on your Mac</span><span class="t-acc-chevron"><svg viewBox="0 0 16 16"><path d="M4 6.5L8 10.5L12 6.5"/></svg></span></div>
+        <div class="t-acc-panel"><div class="t-acc-panel-inner"><div class="body"><p>Changing the app breaks Arc's original signature, so the installer re-signs it on your Mac. That is also why macOS asks about the Keychain once.</p></div></div></div></div>
+      <div class="t-acc" data-open="false"><div class="t-acc-head" role="button" tabindex="0" aria-expanded="false"><span class="tag">TEST</span><span class="ttl">How we checked it keeps working</span><span class="t-acc-chevron"><svg viewBox="0 0 16 16"><path d="M4 6.5L8 10.5L12 6.5"/></svg></span></div>
+        <div class="t-acc-panel"><div class="t-acc-panel-inner"><div class="body"><p>We launched copies with the clock set past 22 December 2026 and into 2027, with no network, with Arc's app and data made unreadable, and with Arc's servers answering “account disabled” or “account deleted”. They kept starting and restoring Spaces. We could not test a real shutdown, which hasn't happened yet.</p></div></div></div></div>
+    </div>
+  </section></div>
+
+  <!-- 6. Works / FAQ -->
+  <div class="wrap"><section id="faq">
+    <div class="eyebrow rv">The honest list</div>
+    <h2 class="rv" style="--i:1">What works, and what doesn't</h2>
+    <div class="two rv" style="--i:2">
+      <div class="card ok"><h3>Works (we checked)</h3><ul>
+        <li>Your Spaces, folders, pinned and open tabs</li>
+        <li>History and bookmarks</li>
+        <li>Browsing, with ArtBrowser's own data</li>
+        <li>A saved Google sign-in, after the Keychain approval</li>
+        <li>It doesn't use the Arc app or Arc's folders</li>
+      </ul></div>
+      <div class="card mid"><h3>Copied, not fully checked</h3><ul>
+        <li>Extensions load, but password managers such as 1Password ask you to unlock them again, and links to their desktop apps aren't verified</li>
+        <li>Saved passwords and other logins</li>
+        <li>Passkeys, DRM video, wallet signing</li>
+      </ul></div>
+    </div>
+    <div class="card no rv" style="--i:3;margin-top:12px"><h3>Turned off</h3><ul>
+      <li>Arc account, sync and sharing links</li><li>Arc Max and other AI features</li><li>Automatic updates, including browser security fixes</li><li>Intel Macs (not tested)</li>
+    </ul></div>
+    <h2 class="rv" style="margin-top:56px">Quick answers</h2>
+    <div class="acc-list" data-exclusive>
+      <div class="t-acc" data-open="false"><div class="t-acc-head" role="button" tabindex="0" aria-expanded="false"><span class="ttl">Will it still work after Arc shuts down on 22 December?</span><span class="t-acc-chevron"><svg viewBox="0 0 16 16"><path d="M4 6.5L8 10.5L12 6.5"/></svg></span></div>
+        <div class="t-acc-panel"><div class="t-acc-panel-inner"><div class="body"><p>That's the whole point, and every test we could run says yes. We can't test a real shutdown until it happens, so we can't promise it.</p></div></div></div></div>
+      <div class="t-acc" data-open="false"><div class="t-acc-head" role="button" tabindex="0" aria-expanded="false"><span class="ttl">What if I uninstall Arc?</span><span class="t-acc-chevron"><svg viewBox="0 0 16 16"><path d="M4 6.5L8 10.5L12 6.5"/></svg></span></div>
+        <div class="t-acc-panel"><div class="t-acc-panel-inner"><div class="body"><p>ArtBrowser is a self-contained copy and doesn't use the Arc app or Arc's data folder. Two things to remember: don't delete the “Arc Safe Storage” Keychain entry (some “app cleaner” tools do), and once Arc is gone you can't reinstall ArtBrowser from it, so install ArtBrowser <b>first</b> and keep a copy of Arc.app somewhere.</p></div></div></div></div>
+      <div class="t-acc" data-open="false"><div class="t-acc-head" role="button" tabindex="0" aria-expanded="false"><span class="ttl">Do my changes in Arc show up in ArtBrowser?</span><span class="t-acc-chevron"><svg viewBox="0 0 16 16"><path d="M4 6.5L8 10.5L12 6.5"/></svg></span></div>
+        <div class="t-acc-panel"><div class="t-acc-panel-inner"><div class="body"><p>No. It's a one-time copy. Switch to ArtBrowser and use it from then on.</p></div></div></div></div>
+      <div class="t-acc" data-open="false"><div class="t-acc-head" role="button" tabindex="0" aria-expanded="false"><span class="ttl">Links open in Arc instead of ArtBrowser</span><span class="t-acc-chevron"><svg viewBox="0 0 16 16"><path d="M4 6.5L8 10.5L12 6.5"/></svg></span></div>
+        <div class="t-acc-panel"><div class="t-acc-panel-inner"><div class="body"><p>macOS still has Arc as your default browser. Set it in System Settings → Desktop &amp; Dock → Default web browser → ArtBrowser.</p></div></div></div></div>
+      <div class="t-acc" data-open="false"><div class="t-acc-head" role="button" tabindex="0" aria-expanded="false"><span class="ttl">Is this official?</span><span class="t-acc-chevron"><svg viewBox="0 0 16 16"><path d="M4 6.5L8 10.5L12 6.5"/></svg></span></div>
+        <div class="t-acc-panel"><div class="t-acc-panel-inner"><div class="body"><p>No. It's an unofficial community project, not affiliated with or endorsed by The Browser Company.</p></div></div></div></div>
+    </div>
   </section></div>
 </main>
 
@@ -144,23 +459,119 @@ footer p{max-width:60em;margin:8px 0}
 
 <script>
 (function(){
-  var steps=[].slice.call(document.querySelectorAll(".step")), bar=document.getElementById("bar");
-  function update(){
-    var n=0;
-    steps.forEach(function(s){var c=s.querySelector("input[type=checkbox]"); var d=c&&c.checked; s.classList.toggle("done",!!d); if(d)n++});
-    bar.style.width=(n/steps.length*100)+"%";
+  var $=function(s,r){return (r||document).querySelector(s)}, $$=function(s,r){return [].slice.call((r||document).querySelectorAll(s))};
+  var ms=function(n){return parseFloat(getComputedStyle(document.documentElement).getPropertyValue(n))||0};
+
+  /* ---- text swap soft (transitions.dev) ---- */
+  function softSwap(el,next){
+    var prev=el.dataset.text!=null?el.dataset.text:el.textContent; if(prev===next) return;
+    el.dataset.text=next; clearTimeout(el._t);
+    var out=document.createElement("span"); out.className="t-text-soft-old"; out.setAttribute("aria-hidden","true"); out.textContent=prev;
+    var inn=document.createElement("span"); inn.className="t-text-soft-new"; inn.textContent=next;
+    var w0=el.getBoundingClientRect().width; el.classList.remove("is-swapping"); el.replaceChildren(out,inn);
+    var w1=inn.getBoundingClientRect().width; el.style.width=w0+"px"; void el.offsetWidth; el.classList.add("is-swapping"); el.style.width=w1+"px";
+    el._t=setTimeout(function(){el.classList.remove("is-swapping"); el.style.removeProperty("width"); el.textContent=next},Math.max(ms("--text-soft-dur"),ms("--text-soft-resize-dur"))+40);
   }
-  steps.forEach(function(s){var c=s.querySelector("input[type=checkbox]"); if(c)c.addEventListener("change",update)});
-  document.querySelectorAll("[data-copy]").forEach(function(b){
+
+  /* ---- tabs sliding (transitions.dev) ---- */
+  function wireTabs(bar,onPick){
+    var pill=$(".t-tabs-pill",bar), tabs=$$(".t-tab",bar);
+    function moveTo(tab,animate){
+      if(!tab) return;
+      if(!animate){var prev=pill.style.transition; pill.style.transition="none"; pill.style.transform="translateX("+tab.offsetLeft+"px)"; pill.style.width=tab.offsetWidth+"px"; void pill.offsetWidth; pill.style.transition=prev}
+      else{pill.style.transform="translateX("+tab.offsetLeft+"px)"; pill.style.width=tab.offsetWidth+"px"}
+    }
+    var active=function(){return tabs.filter(function(t){return t.getAttribute("aria-selected")==="true"||t.getAttribute("aria-current")==="true"})[0]||tabs[0]};
+    tabs.forEach(function(tab){ if(tab.tagName==="BUTTON") tab.addEventListener("click",function(){
+      tabs.forEach(function(t){t.setAttribute("aria-selected",t===tab?"true":"false")}); moveTo(tab,true); if(onPick) onPick(tab.dataset.v);
+    })});
+    requestAnimationFrame(function(){moveTo(active(),false)}); window.addEventListener("resize",function(){moveTo(active(),false)});
+    return {moveTo:moveTo,setActive:function(tab){tabs.forEach(function(t){t.removeAttribute("aria-current")}); if(tab){tab.setAttribute("aria-current","true"); moveTo(tab,true)}},tabs:tabs};
+  }
+
+  /* ---- readiness check ---- */
+  var chip="apple", arc="170";
+  var msg={
+    ok:"You're ready. Quit Arc, run one command, and you'll be done in about a minute.",
+    intel:"Intel Macs aren't supported yet: ArtBrowser has only been tested on Apple Silicon.",
+    other:"That Arc version isn't supported, because an untested version could end up broken. Update Arc if it offers it (1.170.0 is the final release), then come back.",
+    none:"You'll need Arc first, because ArtBrowser is built from your own copy of it. Install Arc, open it once and sign in, then come back."
+  };
+  function verdict(){
+    var key=chip==="intel"?"intel":(arc==="none"?"none":(arc==="other"?"other":"ok"));
+    var v=$("#verdict"); v.dataset.state=key==="ok"?"ok":"no"; softSwap($("#verdictText"),msg[key]);
+    var go=$("#goInstall"); if(key==="ok"){go.removeAttribute("aria-disabled")} else {go.setAttribute("aria-disabled","true")}
+  }
+  $("#goInstall").addEventListener("click",function(e){if(this.getAttribute("aria-disabled")==="true") e.preventDefault()});
+  $$("[data-group]").forEach(function(bar){wireTabs(bar,function(v){ if(bar.dataset.group==="chip") chip=v; else arc=v; verdict() })});
+
+  /* ---- accordions (transitions.dev) ---- */
+  function setOpen(acc,open){acc.setAttribute("data-open",String(open)); var h=$(".t-acc-head",acc); if(h) h.setAttribute("aria-expanded",String(open))}
+  $$(".t-acc-head").forEach(function(head){
+    var acc=head.parentNode;
+    function toggle(e){
+      if(e.target.closest(".t-check")) return;
+      var open=acc.getAttribute("data-open")==="true";
+      var group=acc.parentNode.hasAttribute("data-exclusive")?acc.parentNode:null;
+      if(group&&!open) $$(":scope > .t-acc",group).forEach(function(o){if(o!==acc) setOpen(o,false)});
+      setOpen(acc,!open);
+    }
+    head.addEventListener("click",toggle);
+    head.addEventListener("keydown",function(e){ if((e.key==="Enter"||e.key===" ")&&e.target===head){e.preventDefault(); toggle(e)} });
+  });
+
+  /* ---- steps: tick -> collapse -> open next -> celebrate at the end ---- */
+  var steps=$$(".step"), bar=$("#bar"), count=$("#stepCount"), fin=$("#finish");
+  function refresh(){
+    var done=steps.filter(function(s){return $(".t-check",s).getAttribute("aria-checked")==="true"}).length;
+    bar.style.width=(done/steps.length*100)+"%";
+    count.textContent=done===steps.length?"All done":"Step "+(done+1)+" of "+steps.length;
+    fin.classList.toggle("is-on",done===steps.length);
+    return done;
+  }
+  steps.forEach(function(step,i){
+    var box=$(".t-check",step);
+    box.addEventListener("click",function(e){
+      e.stopPropagation();
+      var on=box.getAttribute("aria-checked")!=="true"; box.setAttribute("aria-checked",String(on)); step.classList.toggle("is-done",on);
+      if(on){ setOpen(step,false); var next=steps[i+1]; if(next && $(".t-check",next).getAttribute("aria-checked")!=="true") setOpen(next,true) }
+      var done=refresh();
+      if(done===steps.length) setTimeout(function(){fin.scrollIntoView({behavior:"smooth",block:"center"})},350);
+    });
+  });
+  refresh();
+
+  /* ---- copy button: soft swap Copy -> Copied ---- */
+  $$("[data-copy]").forEach(function(b){
+    var lbl=$(".t-text-soft",b);
     b.addEventListener("click",function(){
       var t=b.getAttribute("data-copy");
-      var ok=function(){b.textContent="Copied";setTimeout(function(){b.textContent="Copy"},1500)};
+      var ok=function(){softSwap(lbl,"Copied"); clearTimeout(b._r); b._r=setTimeout(function(){softSwap(lbl,"Copy")},1600)};
       if(navigator.clipboard&&navigator.clipboard.writeText){navigator.clipboard.writeText(t).then(ok,function(){})}
     });
   });
-  var dl=document.getElementById("download");
-  dl.addEventListener("click",function(e){ if(dl.getAttribute("aria-disabled")==="true"){ e.preventDefault(); document.getElementById("steps").scrollIntoView({behavior:"smooth"}); } });
-  update();
+
+  /* ---- reveal on scroll: texts reveal, and the installer output line by line ---- */
+  var term=$("#term");
+  function showTerm(){term.classList.remove("is-shown"); void term.offsetHeight; term.classList.add("is-shown")}
+  $("#replay").addEventListener("click",showTerm);
+  if("IntersectionObserver" in window){
+    var io=new IntersectionObserver(function(es){es.forEach(function(e){ if(e.isIntersecting){ e.target.classList.add("is-shown"); io.unobserve(e.target) } })},{threshold:.15,rootMargin:"0px 0px -8% 0px"});
+    $$(".rv").forEach(function(el){io.observe(el)});
+    var io2=new IntersectionObserver(function(es){es.forEach(function(e){ if(e.isIntersecting){ showTerm(); io2.disconnect() } })},{threshold:.3}); io2.observe(term);
+  } else { $$(".rv").forEach(function(el){el.classList.add("is-shown")}); term.classList.add("is-shown") }
+
+  /* ---- sticky section nav: appears after the hero, pill follows the section in view ---- */
+  var snav=$("#snav"), nt=wireTabs($("#navtabs")), secs=["check","install","privacy","how","faq"].map(function(id){return document.getElementById(id)});
+  var hero=$(".hero");
+  new IntersectionObserver(function(es){snav.classList.toggle("is-on",!es[0].isIntersecting)},{threshold:0,rootMargin:"-96px 0px 0px 0px"}).observe(hero);
+  function spy(){
+    var y=window.scrollY+140, cur=null; secs.forEach(function(s,i){ if(s.getBoundingClientRect().top+window.scrollY<=y) cur=i });
+    // "what the installer does" belongs to the install step
+    var happens=document.getElementById("happens"); if(happens && happens.getBoundingClientRect().top+window.scrollY<=y && cur===1) cur=1;
+    nt.setActive(cur==null?null:nt.tabs[cur]);
+  }
+  window.addEventListener("scroll",function(){requestAnimationFrame(spy)},{passive:true}); spy();
 })();
 </script>
 </body>

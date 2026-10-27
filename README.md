@@ -8,7 +8,7 @@ Arc is shutting down on 22 December 2026. ArtBrowser makes a private, local copy
 
 ## Install
 
-macOS on Apple Silicon, with Arc 1.169.0 or 1.170.0 installed. Quit Arc (⌘Q), then run:
+macOS on Apple Silicon, with Arc 1.169.0 or 1.170.0 installed (the supported list lives in `installer/SUPPORTED_VERSIONS`). Quit Arc (⌘Q), then run:
 
 ```sh
 bash install-artbrowser.sh          # or: --check to look without changing anything
@@ -36,7 +36,7 @@ See [VERIFICATION.md](VERIFICATION.md) for what was tested (simulated post-shutd
 
 - `installer/`, `tools/package_installer.sh`: the one-command installer and its packager.
 - `native/`: the launcher, the local-services layer and QA-only instrumentation (`TestClock.c`, `ShutdownConditions.m`), which is never installed.
-- `tools/`: build, migration, export and isolated verification tools.
+- `tools/`: sidebar export, the installer packager and isolated verification (QA) tools.
 - `site/`: the landing page.
 
 ## License

@@ -5,15 +5,16 @@
 set -euo pipefail
 REPO="$(cd "$(dirname "$0")/.." && pwd)"
 OUT="$REPO/site"
-VERSIONS="${1:-1.169.0}"
+VERSIONS="${1:-$(tr -s " \n" " " < "$REPO/installer/SUPPORTED_VERSIONS" | sed "s/ *$//")}"
 BASE_URL="${2:-https://arcreborn.cool.computer}"
 WORK="$(mktemp -d)"; trap 'rm -rf "$WORK"' EXIT
 clang_args=(-arch arm64 -mmacosx-version-min=12.0 -fobjc-arc -framework Foundation -framework AppKit)
 xcrun clang "${clang_args[@]}" "$REPO/native/Launcher.m" -o "$WORK/ArtBrowser"
 xcrun clang "${clang_args[@]}" -dynamiclib "$REPO/native/LocalServices.m" -o "$WORK/ArtBrowserLocalServices.dylib"
 # fixed timestamps and order so the same source gives the same payload
-touch -t 202601010000 "$WORK/ArtBrowser" "$WORK/ArtBrowserLocalServices.dylib"
-(cd "$WORK" && COPYFILE_DISABLE=1 tar --no-xattrs -czf "$OUT/artbrowser-payload.tgz" ArtBrowser ArtBrowserLocalServices.dylib)
+cp "$REPO/installer/ArtBrowser.icns" "$WORK/ArtBrowser.icns"
+touch -t 202601010000 "$WORK/ArtBrowser" "$WORK/ArtBrowserLocalServices.dylib" "$WORK/ArtBrowser.icns"
+(cd "$WORK" && COPYFILE_DISABLE=1 tar --no-xattrs -czf "$OUT/artbrowser-payload.tgz" ArtBrowser ArtBrowserLocalServices.dylib ArtBrowser.icns)
 SHA="$(shasum -a 256 "$OUT/artbrowser-payload.tgz" | cut -d' ' -f1)"
 sed -e "s|__SUPPORTED_VERSIONS__|$VERSIONS|" -e "s|__PAYLOAD_URL__|$BASE_URL/artbrowser-payload.tgz|" -e "s|__PAYLOAD_SHA256__|$SHA|" \
   "$REPO/installer/install-artbrowser.sh.in" > "$OUT/install-artbrowser.sh"

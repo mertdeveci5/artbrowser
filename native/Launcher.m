@@ -39,9 +39,14 @@ int main(int argc, const char **argv) {
         NSString *original = [root stringByAppendingPathComponent:@"Arc"].stringByResolvingSymlinksInPath;
         if ([resolved isEqualToString:original] || [resolved hasPrefix:[original stringByAppendingString:@"/"]])
             return Fail(@"The local copy must use its own data folder. Your original Arc data has not been changed.");
+        // Chromium's data folder must also live inside ArtBrowser's own folder (a link out would share Arc's databases).
+        NSString *userData = [profile stringByAppendingPathComponent:@"User Data"].stringByResolvingSymlinksInPath;
+        if (![userData hasPrefix:[resolved stringByAppendingString:@"/"]])
+            return Fail(@"The browser's data folder points outside ArtBrowser's own folder, so I did not open it. Your original Arc data has not been changed.");
         NSString *authFile = [profile stringByAppendingPathComponent:@"StorableAuthState.json"];
         NSData *authData = [NSData dataWithContentsOfFile:authFile];
-        NSDictionary *auth = authData ? [NSJSONSerialization JSONObjectWithData:authData options:0 error:NULL] : nil;
+        id authRoot = authData ? [NSJSONSerialization JSONObjectWithData:authData options:0 error:NULL] : nil;
+        NSDictionary *auth = [authRoot isKindOfClass:[NSDictionary class]] ? authRoot : nil;   // valid JSON can still be an array
         NSDictionary *session = [auth[@"session"] isKindOfClass:[NSDictionary class]] ? auth[@"session"] : nil;
         NSDictionary *user = [session[@"user"] isKindOfClass:[NSDictionary class]] ? session[@"user"] : nil;
         if (![user[@"id"] isKindOfClass:[NSString class]] || ![user[@"id"] length])

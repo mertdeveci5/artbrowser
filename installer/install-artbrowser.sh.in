@@ -3,15 +3,18 @@
 #
 # It copies the Arc app and your Arc data on THIS Mac into a separate app called ArtBrowser,
 # adds a small launcher that keeps Arc's cloud features switched off, and signs the result
-# locally. It never changes Arc or your Arc data. It does not download Arc.
+# locally. It never changes Arc or your Arc data. It does not download Arc and uploads nothing.
 #
-#   bash install-artbrowser.sh            install
-#   bash install-artbrowser.sh --check    look at your Mac and report, change nothing
+#   bash install-artbrowser.sh               install
+#   bash install-artbrowser.sh --check       look at your Mac and report, change nothing
 #   bash install-artbrowser.sh --uninstall   remove ArtBrowser (your Arc and backups stay)
 #
 # The launcher and local-services library it installs come from a small payload file
 # (checked against the SHA-256 below). They are built from native/Launcher.m and
 # native/LocalServices.m, which are published next to this script.
+#
+# Everything below the option parsing lives in main(), so a truncated download (for example
+# a dropped `curl | bash`) fails to parse and changes nothing.
 
 set -euo pipefail
 umask 077
@@ -27,14 +30,17 @@ DEST_APP="$HOME/Applications/ArtBrowser.app"
 DEST_DATA_ROOT="$SUPPORT/ArtBrowser.noindex"
 DEST_ALIAS="$SUPPORT/ArtBrowser"
 BACKUP_ROOT="$SUPPORT/ArtBrowserBackup"
+LOCK_DIR="$SUPPORT/.artbrowser-install.lock"
+LSREGISTER="/System/Library/Frameworks/CoreServices.framework/Frameworks/LaunchServices.framework/Support/lsregister"
 MODE="install"
 ASSUME_YES=0
+STAGE=""; CREATED=(); DONE=0; LOCKED=0
 
 say()  { printf '%s\n' "$*"; }
 step() { printf '\n▸ %s\n' "$*"; }
 die()  { printf '\n✗ %s\n' "$*" >&2; exit 1; }
 
-usage() { sed -n '2,15p' "$0" | sed 's/^# \{0,1\}//'; exit 0; }
+usage() { sed -n '2,13p' "$0" | sed 's/^# \{0,1\}//'; exit 0; }
 
 while [ $# -gt 0 ]; do
   case "$1" in
@@ -60,131 +66,184 @@ json_ok() {
   /usr/bin/osascript -l JavaScript -e 'ObjC.import("Foundation"); function run(a){ var d=$.NSData.dataWithContentsOfFile(a[0]); if(!d) throw new Error("unreadable"); var o=$.NSJSONSerialization.JSONObjectWithDataOptionsError(d,0,$()); if(!o || o.isNil()) throw new Error("not JSON"); return "ok"; }' "$1" >/dev/null 2>&1
 }
 
-arc_running()  { pgrep -f "$ARC_APP/Contents/" >/dev/null 2>&1; }
-art_running()  { pgrep -f "$DEST_APP/Contents/" >/dev/null 2>&1; }
+# Literal (not regular-expression) search of every running process's command line.
+# The needle goes through the environment, not awk's arguments, so awk cannot match its own command line.
+proc_running() { ps -axo command= | NEEDLE="$1" awk 'index($0, ENVIRON["NEEDLE"]){f=1} END{exit !f}'; }
+arc_running()  { proc_running "$ARC_APP/Contents/" || { [ -n "${ARC_APP_ORIG:-}" ] && proc_running "$ARC_APP_ORIG/Contents/"; }; }
+art_running()  { proc_running "/ArtBrowser.app/Contents/"; }
 
-# ---------------------------------------------------------------- uninstall
-if [ "$MODE" = "uninstall" ]; then
-  step "Uninstalling ArtBrowser"
-  art_running && die "ArtBrowser is open. Quit it (⌘Q) and run this again."
-  say "This removes: $DEST_APP"
-  say "              $DEST_DATA_ROOT  (ArtBrowser's own copy of your data)"
-  say "It keeps your original Arc, your Arc data and any backups in $BACKUP_ROOT."
-  confirm "Remove ArtBrowser now?" || die "Cancelled. Nothing was changed."
-  [ -L "$DEST_ALIAS" ] && rm "$DEST_ALIAS"
-  rm -rf "$DEST_APP" "$DEST_DATA_ROOT"
-  defaults delete local.artbrowser.app >/dev/null 2>&1 || true
-  rm -rf "$HOME/Library/Caches/local.artbrowser.app" "$HOME/Library/HTTPStorages/local.artbrowser.app" \
-         "$HOME/Library/Saved Application State/local.artbrowser.app.savedState"
-  say "Done. ArtBrowser is removed. Arc was not touched."
-  exit 0
-fi
+resolve_dir() { ( cd -P "$1" 2>/dev/null && pwd -P ); }
 
-# ---------------------------------------------------------------- preflight
-step "Checking your Mac"
-[ "$(uname -s)" = "Darwin" ] || die "This installer is for macOS."
-[ "$(sysctl -n hw.optional.arm64 2>/dev/null || echo 0)" = "1" ] || die "This build has only been tested on Apple Silicon Macs. Your Mac looks like an Intel Mac, so I stopped before changing anything."
-macos_major="$(sw_vers -productVersion | cut -d. -f1)"
-[ "$macos_major" -ge 12 ] || die "macOS 12 or newer is required (you have $(sw_vers -productVersion))."
-say "  ✓ Apple Silicon, macOS $(sw_vers -productVersion)"
-
-[ -d "$ARC_APP" ] || die "Arc was not found at $ARC_APP. Install Arc first, or point me at it with --arc-app /path/to/Arc.app"
-arc_id="$(/usr/libexec/PlistBuddy -c 'Print :CFBundleIdentifier' "$ARC_APP/Contents/Info.plist" 2>/dev/null || true)"
-[ "$arc_id" = "company.thebrowser.Browser" ] || die "That does not look like Arc (bundle id: ${arc_id:-unknown})."
-arc_version="$(/usr/libexec/PlistBuddy -c 'Print :CFBundleShortVersionString' "$ARC_APP/Contents/Info.plist")"
-arc_build="$(/usr/libexec/PlistBuddy -c 'Print :CFBundleVersion' "$ARC_APP/Contents/Info.plist")"
-case " $SUPPORTED_VERSIONS " in
-  *" $arc_version "*) say "  ✓ Arc $arc_version ($arc_build)" ;;
-  *) die "Your Arc is version $arc_version. This installer was only tested with: $SUPPORTED_VERSIONS. I stopped before changing anything, because an untested version could end up broken." ;;
-esac
-
-[ -d "$ARC_DATA" ] || die "Arc's data folder was not found at $ARC_DATA. Open Arc once and sign in, then try again."
-for f in StorableSidebar.json StorableAuthState.json; do
-  [ -s "$ARC_DATA/$f" ] || die "Missing $f in Arc's data folder. Open Arc once and sign in, then try again."
-  json_ok "$ARC_DATA/$f" || die "$f in Arc's data folder could not be read. Nothing was changed."
-done
-uid="$(plutil -extract session.user.id raw -o - "$ARC_DATA/StorableAuthState.json" 2>/dev/null || true)"
-[ -n "$uid" ] || die "Arc has no saved sign-in on this Mac. ArtBrowser needs the saved session, so sign in to Arc once, quit it, and try again."
-say "  ✓ Arc data found (saved sidebar and session)"
-
-if [ -e "$DEST_APP" ] || [ -e "$DEST_DATA_ROOT" ] || [ -e "$DEST_ALIAS" ] || [ -L "$DEST_ALIAS" ]; then
-  die "ArtBrowser is already installed. To start over run: bash $0 --uninstall   (your Arc and backups are untouched)"
-fi
-say "  ✓ ArtBrowser is not installed yet"
-
-if [ "${ARTBROWSER_INSTALLER_TEST:-}" != "1" ] && arc_running; then
-  die "Arc is still running. Quit it completely with ⌘Q (closing the window is not enough), then run this again. I need Arc closed so your data is copied cleanly."
-fi
-say "  ✓ Arc is not running"
-
-data_kb="$(du -sk "$ARC_DATA" | cut -f1)"; app_kb="$(du -sk "$ARC_APP" | cut -f1)"
-free_kb="$(df -k "$HOME" | awk 'NR==2{print $4}')"
-if diskutil info "$HOME" 2>/dev/null | grep -qi "APFS"; then need_kb=$((2*1024*1024)); else need_kb=$((data_kb + app_kb + 1024*1024)); fi
-[ "$free_kb" -ge "$need_kb" ] || die "Not enough free disk space (need about $((need_kb/1024/1024)) GB, have $((free_kb/1024/1024)) GB)."
-say "  ✓ Enough free space"
-
-if [ "$MODE" = "check" ]; then
-  say ""; say "All checks passed. Nothing was changed. Run without --check to install."
-  exit 0
-fi
-
-step "Installing (Arc itself is never changed)"
-say "  1. Back up your Arc data to $BACKUP_ROOT"
-say "  2. Build $DEST_APP from a copy of your Arc"
-say "  3. Give it its own copy of your data"
-
-# ---------------------------------------------------------------- install
-STAGE=""; CREATED=(); DONE=0
-cleanup() {
-  local rc=$?
-  if [ "$DONE" != 1 ]; then
-    for p in "${CREATED[@]:-}"; do [ -n "$p" ] && { [ -L "$p" ] && rm -f "$p" || rm -rf "$p"; }; done
-    [ $rc -ne 0 ] && printf '\n✗ Install did not finish, so I removed everything I had created. Arc and its data were not touched.\n' >&2
-  fi
-  [ -n "$STAGE" ] && rm -rf "$STAGE"
-  return 0
+# Symlinks that leave the folder (absolute target, or a ".." in it), apart from Chromium's own
+# disposable Singleton* links. Copying such a link would let ArtBrowser write into Arc's data.
+unsafe_links() {
+  find "$1" -type l ! -name 'Singleton*' 2>/dev/null | while IFS= read -r l; do
+    t="$(readlink "$l")"; case "$t" in /*|*..*) printf '%s -> %s\n' "$l" "$t" ;; esac
+  done
 }
-trap cleanup EXIT
 
 run() { local out; if ! out="$("$@" 2>&1)"; then printf '%s\n' "$out" >&2; return 1; fi; }
 pset() { local f="$1" k="$2" t="$3" v="$4"; /usr/libexec/PlistBuddy -c "Set :$k $v" "$f" >/dev/null 2>&1 || /usr/libexec/PlistBuddy -c "Add :$k $t $v" "$f"; }
 
-mkdir -p "$HOME/Applications"
-STAGE="$(mktemp -d "$HOME/Applications/.artbrowser-build-XXXXXX.noindex")"
+acquire_lock() {
+  mkdir -p "$SUPPORT"
+  if ! mkdir "$LOCK_DIR" 2>/dev/null; then
+    local old; old="$(cat "$LOCK_DIR/pid" 2>/dev/null || true)"
+    if [ -n "$old" ] && kill -0 "$old" 2>/dev/null; then die "Another ArtBrowser install or uninstall is already running (process $old). Wait for it to finish."; fi
+    rm -rf "$LOCK_DIR"; mkdir "$LOCK_DIR" 2>/dev/null || die "Could not take the install lock."
+  fi
+  echo "$$" > "$LOCK_DIR/pid"; LOCKED=1
+}
 
-step "1/5 Backing up your Arc data"
-stamp="$(date +%Y-%m-%d_%H-%M-%S)"
-mkdir -p "$BACKUP_ROOT/$stamp"
-run cp -cR "$ARC_DATA" "$BACKUP_ROOT/$stamp/Arc-data"
-say "  ✓ $BACKUP_ROOT/$stamp"
+cleanup() {
+  local rc=$?
+  if [ "$DONE" != 1 ]; then
+    local p
+    for p in "${CREATED[@]:-}"; do [ -n "$p" ] && { if [ -L "$p" ]; then rm -f "$p"; else rm -rf "$p"; fi; }; done
+    [ $rc -ne 0 ] && [ ${#CREATED[@]} -gt 0 ] && printf '\n✗ Install did not finish, so I removed everything I had created. Arc and its data were not touched.\n' >&2
+  fi
+  [ -n "$STAGE" ] && rm -rf "$STAGE"
+  [ "$LOCKED" = 1 ] && rm -rf "$LOCK_DIR"
+  return 0
+}
 
-step "2/5 Getting the launcher"
-mkdir -p "$STAGE/payload"
-if [ -n "$PAYLOAD_FILE" ]; then cp "$PAYLOAD_FILE" "$STAGE/payload.tgz"
-else curl -fsSL --max-time 180 "$PAYLOAD_URL" -o "$STAGE/payload.tgz" || die "Could not download the launcher from $PAYLOAD_URL. Check your internet connection and try again."; fi
-got="$(shasum -a 256 "$STAGE/payload.tgz" | cut -d' ' -f1)"
-[ "$got" = "$PAYLOAD_SHA256" ] || die "The launcher file does not match its checksum, so I did not use it. Download the installer again."
-tar -xzf "$STAGE/payload.tgz" -C "$STAGE/payload"
-[ -x "$STAGE/payload/ArtBrowser" ] && [ -f "$STAGE/payload/ArtBrowserLocalServices.dylib" ] || die "The launcher file is incomplete. Download the installer again."
-say "  ✓ Launcher verified"
+main() {
+  # ------------------------------------------------------------ uninstall
+  if [ "$MODE" = "uninstall" ]; then
+    step "Uninstalling ArtBrowser"
+    acquire_lock; trap cleanup EXIT
+    art_running && die "ArtBrowser is open. Quit it (⌘Q) and run this again."
+    local apps=() a
+    for a in "$DEST_APP" "/Applications/ArtBrowser.app"; do
+      [ -d "$a" ] && [ "$(/usr/libexec/PlistBuddy -c 'Print :CFBundleIdentifier' "$a/Contents/Info.plist" 2>/dev/null || true)" = "local.artbrowser.app" ] && apps+=("$a")
+    done
+    say "This removes: ${apps[*]:-(no ArtBrowser app found)}"
+    say "              $DEST_DATA_ROOT  (ArtBrowser's own copy of your data)"
+    say "It keeps your original Arc, your Arc data and any backups in $BACKUP_ROOT."
+    confirm "Remove ArtBrowser now?" || die "Cancelled. Nothing was changed."
+    art_running && die "ArtBrowser was opened while you were deciding. Quit it (⌘Q) and run this again."
+    [ -L "$DEST_ALIAS" ] && rm "$DEST_ALIAS"
+    for a in "${apps[@]:-}"; do [ -n "$a" ] && rm -rf "$a"; done
+    rm -rf "$DEST_DATA_ROOT"
+    defaults delete local.artbrowser.app >/dev/null 2>&1 || true
+    rm -rf "$HOME/Library/Caches/local.artbrowser.app" "$HOME/Library/HTTPStorages/local.artbrowser.app" \
+           "$HOME/Library/Saved Application State/local.artbrowser.app.savedState"
+    say "Done. ArtBrowser is removed. Arc was not touched."
+    DONE=1; exit 0
+  fi
 
-step "3/5 Building ArtBrowser.app (this takes a minute)"
-APP="$STAGE/ArtBrowser.app"
-run cp -cR "$ARC_APP" "$APP"
-INFO="$APP/Contents/Info.plist"
-pset "$INFO" CFBundleIdentifier string local.artbrowser.app
-pset "$INFO" CFBundleName string ArtBrowser
-pset "$INFO" CFBundleDisplayName string ArtBrowser
-pset "$INFO" CFBundleExecutable string ArtBrowser
-pset "$INFO" SUEnableAutomaticChecks bool false
-pset "$INFO" SUAutomaticallyUpdate bool false
-/usr/libexec/PlistBuddy -c "Delete :SUFeedURL" "$INFO" >/dev/null 2>&1 || true
-mv "$APP/Contents/MacOS/Arc" "$APP/Contents/MacOS/ArcBinary"
-cp "$STAGE/payload/ArtBrowser" "$APP/Contents/MacOS/ArtBrowser"; chmod 755 "$APP/Contents/MacOS/ArtBrowser"
-cp "$STAGE/payload/ArtBrowserLocalServices.dylib" "$APP/Contents/Frameworks/ArtBrowserLocalServices.dylib"
-printf '{\n  "source_version": "%s",\n  "source_build": "%s",\n  "architecture": "arm64",\n  "built_at": "%s",\n  "installer": "friends-1"\n}\n' \
-  "$arc_version" "$arc_build" "$(date +%Y-%m-%dT%H:%M:%S)" > "$APP/Contents/Resources/ArtBrowser-build.json"
-cat > "$STAGE/entitlements.plist" <<'PLIST'
+  # ------------------------------------------------------------ preflight
+  step "Checking your Mac"
+  [ "$(uname -s)" = "Darwin" ] || die "This installer is for macOS."
+  [ "$(sysctl -n hw.optional.arm64 2>/dev/null || echo 0)" = "1" ] || die "This build has only been tested on Apple Silicon Macs. Your Mac looks like an Intel Mac, so I stopped before changing anything."
+  local macos_major; macos_major="$(sw_vers -productVersion | cut -d. -f1)"
+  [ "$macos_major" -ge 12 ] || die "macOS 12 or newer is required (you have $(sw_vers -productVersion))."
+  say "  ✓ Apple Silicon, macOS $(sw_vers -productVersion)"
+
+  [ -d "$ARC_APP" ] || die "Arc was not found at $ARC_APP. Install Arc first, or point me at it with --arc-app /path/to/Arc.app"
+  ARC_APP_ORIG="$ARC_APP"
+  ARC_APP="$(resolve_dir "$ARC_APP")" || die "Could not read $ARC_APP."
+  local arc_id; arc_id="$(/usr/libexec/PlistBuddy -c 'Print :CFBundleIdentifier' "$ARC_APP/Contents/Info.plist" 2>/dev/null || true)"
+  [ "$arc_id" = "company.thebrowser.Browser" ] || die "That does not look like Arc (bundle id: ${arc_id:-unknown})."
+  local arc_version arc_build
+  arc_version="$(/usr/libexec/PlistBuddy -c 'Print :CFBundleShortVersionString' "$ARC_APP/Contents/Info.plist")"
+  arc_build="$(/usr/libexec/PlistBuddy -c 'Print :CFBundleVersion' "$ARC_APP/Contents/Info.plist")"
+  case " $SUPPORTED_VERSIONS " in
+    *" $arc_version "*) say "  ✓ Arc $arc_version ($arc_build)" ;;
+    *) die "Your Arc is version $arc_version. This installer was only tested with: $SUPPORTED_VERSIONS. I stopped before changing anything, because an untested version could end up broken." ;;
+  esac
+
+  [ -d "$ARC_DATA" ] || die "Arc's data folder was not found at $ARC_DATA. Open Arc once and sign in, then try again."
+  ARC_DATA="$(resolve_dir "$ARC_DATA")" || die "Could not read Arc's data folder."
+  local f
+  for f in StorableSidebar.json StorableAuthState.json; do
+    [ -s "$ARC_DATA/$f" ] || die "Missing $f in Arc's data folder. Open Arc once and sign in, then try again."
+    json_ok "$ARC_DATA/$f" || die "$f in Arc's data folder could not be read. Nothing was changed."
+  done
+  local uid; uid="$(plutil -extract session.user.id raw -o - "$ARC_DATA/StorableAuthState.json" 2>/dev/null || true)"
+  [ -n "$uid" ] || die "Arc has no saved sign-in on this Mac. ArtBrowser needs the saved session, so sign in to Arc once, quit it, and try again."
+  say "  ✓ Arc data found (saved sidebar and session)"
+
+  local links; links="$(unsafe_links "$ARC_DATA")"
+  if [ -n "$links" ]; then
+    printf '%s\n' "$links" | head -5 >&2
+    die "Arc's data folder contains links that point outside it (shown above). Copying them would let ArtBrowser write into Arc's data, so I stopped before changing anything."
+  fi
+  say "  ✓ Arc's data folder is self-contained"
+
+  if [ -e "$DEST_APP" ] || [ -e "/Applications/ArtBrowser.app" ] || [ -e "$DEST_DATA_ROOT" ] || [ -e "$DEST_ALIAS" ] || [ -L "$DEST_ALIAS" ]; then
+    die "ArtBrowser is already installed. To start over, run this installer again with --uninstall (your Arc and backups are untouched)."
+  fi
+  say "  ✓ ArtBrowser is not installed yet"
+
+  if [ "${ARTBROWSER_INSTALLER_TEST:-}" != "1" ] && arc_running; then
+    die "Arc is still running. Quit it completely with ⌘Q (closing the window is not enough), then run this again. I need Arc closed so your data is copied cleanly."
+  fi
+  say "  ✓ Arc is not running"
+
+  local data_kb app_kb free_kb need_kb apfs=0 same_dev=0
+  data_kb="$(du -sk "$ARC_DATA" | cut -f1)"; app_kb="$(du -sk "$ARC_APP" | cut -f1)"
+  free_kb="$(df -k "$HOME" | awk 'NR==2{print $4}')"
+  diskutil info "$HOME" 2>/dev/null | grep -qi "APFS" && apfs=1
+  [ "$(stat -f %d "$ARC_DATA")" = "$(stat -f %d "$HOME")" ] && [ "$(stat -f %d "$ARC_APP")" = "$(stat -f %d "$HOME")" ] && same_dev=1
+  if [ "$apfs" = 1 ] && [ "$same_dev" = 1 ]; then need_kb=$((2*1024*1024))                 # copy-on-write clones share blocks
+  else need_kb=$((2*data_kb + app_kb + 1024*1024)); fi                                      # real copies: backup + profile + app
+  [ "$free_kb" -ge "$need_kb" ] || die "Not enough free disk space (need about $((need_kb/1024/1024)) GB, have $((free_kb/1024/1024)) GB)."
+  say "  ✓ Enough free space"
+
+  if [ "$MODE" = "check" ]; then
+    say ""; say "All checks passed. Nothing was changed. Run without --check to install."
+    exit 0
+  fi
+
+  acquire_lock; trap cleanup EXIT
+  step "Installing (Arc itself is never changed)"
+  say "  1. Back up your Arc data to $BACKUP_ROOT"
+  say "  2. Build $DEST_APP from a copy of your Arc"
+  say "  3. Give it its own copy of your data"
+
+  mkdir -p "$HOME/Applications"
+  STAGE="$(mktemp -d "$HOME/Applications/.artbrowser-build-XXXXXX.noindex")"
+
+  step "1/5 Backing up your Arc data"
+  if [ "${ARTBROWSER_INSTALLER_TEST:-}" != "1" ] && arc_running; then die "Arc was opened again. Quit it (⌘Q) and run this again."; fi
+  local stamp backup; stamp="$(date +%Y-%m-%d_%H-%M-%S)"; backup="$BACKUP_ROOT/$stamp"
+  mkdir -p "$BACKUP_ROOT"; mkdir "$backup" || die "A backup folder for this second already exists. Try again."
+  CREATED+=("$backup")
+  run cp -cR "$ARC_DATA" "$backup/Arc-data"
+  say "  ✓ $backup"
+
+  step "2/5 Getting the launcher"
+  mkdir -p "$STAGE/payload"
+  if [ -n "$PAYLOAD_FILE" ]; then cp "$PAYLOAD_FILE" "$STAGE/payload.tgz"
+  else curl -fsSL --max-time 180 "$PAYLOAD_URL" -o "$STAGE/payload.tgz" || die "Could not download the launcher from $PAYLOAD_URL. Check your internet connection and try again."; fi
+  local got; got="$(shasum -a 256 "$STAGE/payload.tgz" | cut -d' ' -f1)"
+  [ "$got" = "$PAYLOAD_SHA256" ] || die "The launcher file does not match its checksum, so I did not use it. Download the installer again."
+  tar -xzf "$STAGE/payload.tgz" -C "$STAGE/payload"
+  [ -x "$STAGE/payload/ArtBrowser" ] && [ -f "$STAGE/payload/ArtBrowserLocalServices.dylib" ] && [ -f "$STAGE/payload/ArtBrowser.icns" ] || die "The launcher file is incomplete. Download the installer again."
+  say "  ✓ Launcher verified"
+
+  step "3/5 Building ArtBrowser.app (this takes a minute)"
+  local APP="$STAGE/ArtBrowser.app"
+  run cp -cR "$ARC_APP" "$APP"
+  [ -d "$APP" ] && [ ! -L "$APP" ] || die "Copying Arc produced something unexpected. Nothing was changed."
+  local INFO="$APP/Contents/Info.plist"
+  pset "$INFO" CFBundleIdentifier string local.artbrowser.app
+  pset "$INFO" CFBundleName string ArtBrowser
+  pset "$INFO" CFBundleDisplayName string ArtBrowser
+  pset "$INFO" CFBundleExecutable string ArtBrowser
+  pset "$INFO" CFBundleIconFile string ArtBrowser
+  /usr/libexec/PlistBuddy -c "Delete :CFBundleIconName" "$INFO" >/dev/null 2>&1 || true
+  pset "$INFO" SUEnableAutomaticChecks bool false
+  pset "$INFO" SUAutomaticallyUpdate bool false
+  /usr/libexec/PlistBuddy -c "Delete :SUFeedURL" "$INFO" >/dev/null 2>&1 || true
+  mv "$APP/Contents/MacOS/Arc" "$APP/Contents/MacOS/ArcBinary"
+  cp "$STAGE/payload/ArtBrowser" "$APP/Contents/MacOS/ArtBrowser"; chmod 755 "$APP/Contents/MacOS/ArtBrowser"
+  cp "$STAGE/payload/ArtBrowserLocalServices.dylib" "$APP/Contents/Frameworks/ArtBrowserLocalServices.dylib"
+  cp "$STAGE/payload/ArtBrowser.icns" "$APP/Contents/Resources/ArtBrowser.icns"
+  printf '{\n  "source_version": "%s",\n  "source_build": "%s",\n  "architecture": "arm64",\n  "built_at": "%s",\n  "installer": "friends-2"\n}\n' \
+    "$arc_version" "$arc_build" "$(date +%Y-%m-%dT%H:%M:%S)" > "$APP/Contents/Resources/ArtBrowser-build.json"
+  cat > "$STAGE/entitlements.plist" <<'PLIST'
 <?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0"><dict>
@@ -194,37 +253,51 @@ cat > "$STAGE/entitlements.plist" <<'PLIST'
 <key>com.apple.security.device.camera</key><true/>
 </dict></plist>
 PLIST
-xattr -cr "$APP"
-run codesign --force --sign - --identifier local.artbrowser.app --entitlements "$STAGE/entitlements.plist" "$APP/Contents/MacOS/ArcBinary"
-run codesign --force --sign - "$APP/Contents/Frameworks/ArtBrowserLocalServices.dylib"
-run codesign --force --deep --sign - --entitlements "$STAGE/entitlements.plist" "$APP"
-run codesign --verify --deep --strict "$APP"
-say "  ✓ Built and signed on this Mac"
+  xattr -cr "$APP"
+  run codesign --force --sign - --identifier local.artbrowser.app --entitlements "$STAGE/entitlements.plist" "$APP/Contents/MacOS/ArcBinary"
+  run codesign --force --sign - "$APP/Contents/Frameworks/ArtBrowserLocalServices.dylib"
+  run codesign --force --deep --sign - --entitlements "$STAGE/entitlements.plist" "$APP"
+  run codesign --verify --deep --strict "$APP"
+  say "  ✓ Built and signed on this Mac"
 
-step "4/5 Giving ArtBrowser its own copy of your data"
-run cp -cR "$ARC_DATA" "$STAGE/Profile"
-for lock in SingletonLock SingletonCookie SingletonSocket; do rm -f "$STAGE/Profile/User Data/$lock"; done
-ARC_PREFS="$HOME/Library/Preferences/company.thebrowser.Browser.plist"
-if [ -f "$ARC_PREFS" ]; then cp "$ARC_PREFS" "$STAGE/prefs.plist"; else /usr/libexec/PlistBuddy -c "Save" "$STAGE/prefs.plist" >/dev/null 2>&1 || printf '<?xml version="1.0" encoding="UTF-8"?><plist version="1.0"><dict/></plist>' > "$STAGE/prefs.plist"; fi
-for k in cloudKitSyncEnabled firebaseSyncEnabled SUEnableAutomaticChecks SUAutomaticallyUpdate; do pset "$STAGE/prefs.plist" "$k" bool false; done
+  step "4/5 Giving ArtBrowser its own copy of your data"
+  run cp -cR "$ARC_DATA" "$STAGE/Profile"
+  local l
+  for l in SingletonLock SingletonCookie SingletonSocket; do rm -f "$STAGE/Profile/User Data/$l"; done
+  links="$(unsafe_links "$STAGE/Profile")"
+  [ -z "$links" ] || die "The copy of Arc's data contains links that point outside it, so I stopped. Arc's data was not changed."
+  local ARC_PREFS="$HOME/Library/Preferences/company.thebrowser.Browser.plist"
+  if [ -f "$ARC_PREFS" ]; then cp "$ARC_PREFS" "$STAGE/prefs.plist"; else printf '<?xml version="1.0" encoding="UTF-8"?><plist version="1.0"><dict/></plist>' > "$STAGE/prefs.plist"; fi
+  local k
+  for k in cloudKitSyncEnabled firebaseSyncEnabled SUEnableAutomaticChecks SUAutomaticallyUpdate; do pset "$STAGE/prefs.plist" "$k" bool false; done
 
-step "5/5 Putting it in place"
-mkdir -p "$DEST_DATA_ROOT"; CREATED+=("$DEST_DATA_ROOT")
-mv "$STAGE/Profile" "$DEST_DATA_ROOT/Profile"
-ln -s "$DEST_DATA_ROOT/Profile" "$DEST_ALIAS"; CREATED+=("$DEST_ALIAS")
-if [ "${ARTBROWSER_INSTALLER_TEST:-}" != "1" ]; then run defaults import local.artbrowser.app "$STAGE/prefs.plist"; fi
-mv "$APP" "$DEST_APP"; CREATED+=("$DEST_APP")
-DONE=1
+  step "5/5 Putting it in place"
+  if [ "${ARTBROWSER_INSTALLER_TEST:-}" != "1" ] && arc_running; then die "Arc was opened again. Quit it (⌘Q) and run this again."; fi
+  mkdir "$DEST_DATA_ROOT" 2>/dev/null || die "ArtBrowser's data folder appeared while installing (another installer?). Nothing of yours was changed."
+  CREATED+=("$DEST_DATA_ROOT")
+  mv "$STAGE/Profile" "$DEST_DATA_ROOT/Profile"
+  ln -s "$DEST_DATA_ROOT/Profile" "$DEST_ALIAS" || die "Could not create the data link."
+  CREATED+=("$DEST_ALIAS")
+  if [ "${ARTBROWSER_INSTALLER_TEST:-}" != "1" ]; then run defaults import local.artbrowser.app "$STAGE/prefs.plist"; fi
+  [ ! -e "$DEST_APP" ] || die "ArtBrowser.app appeared while installing. Nothing of yours was changed."
+  CREATED+=("$DEST_APP")
+  mv "$APP" "$DEST_APP"
+  [ -x "$LSREGISTER" ] && "$LSREGISTER" -f "$DEST_APP" >/dev/null 2>&1 || true
+  DONE=1
 
-say ""
-say "✓ ArtBrowser is installed:  $DEST_APP"
-say ""
-say "Next:"
-say "  1. Open it:  open \"$DEST_APP\"   (or find ArtBrowser in your Applications folder in your home folder)"
-say "  2. macOS will ask to use \"Arc Safe Storage\". Click Always Allow. That unlocks your saved logins."
-say "  3. Keep Arc installed, and do not delete the \"Arc Safe Storage\" Keychain entry."
-say ""
-say "ArtBrowser is a one-time copy: changes in Arc and ArtBrowser do not sync."
-say "Your Arc data was backed up to: $BACKUP_ROOT/$stamp"
-say "To remove ArtBrowser later, run this installer again with --uninstall"
-exit 0
+  say ""
+  say "✓ ArtBrowser is installed:  $DEST_APP"
+  say ""
+  say "Next:"
+  say "  1. Open it:  open \"$DEST_APP\""
+  say "  2. macOS will ask to use \"Arc Safe Storage\". Enter your Mac password (or use Touch ID) and click Always Allow. That unlocks your saved logins."
+  say "  3. Optional: make it your default browser in System Settings → Desktop & Dock → Default web browser."
+  say "  4. Keep Arc installed, and do not delete the \"Arc Safe Storage\" Keychain entry."
+  say ""
+  say "ArtBrowser is a one-time copy: changes in Arc and ArtBrowser do not sync."
+  say "Your Arc data was backed up to: $backup"
+  say "To remove ArtBrowser later, run this installer again with --uninstall"
+  exit 0
+}
+
+main

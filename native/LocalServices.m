@@ -136,16 +136,17 @@ static NSModalResponse DiagnosticRunModal(NSAlert *alert, SEL selector) {
 @property(nonatomic, copy) NSDictionary *saved;
 @end
 @implementation ABLocalUser
-- (NSString *)uid { return self.saved[@"id"]; }
-- (NSString *)email { return self.saved[@"email"]; }
-- (NSString *)displayName { return self.saved[@"name"]; }
+- (NSString *)stringFor:(NSString *)key { id v = self.saved[key]; return [v isKindOfClass:[NSString class]] ? v : nil; }
+- (NSString *)uid { return [self stringFor:@"id"]; }
+- (NSString *)email { return [self stringFor:@"email"]; }
+- (NSString *)displayName { return [self stringFor:@"name"]; }
 - (NSURL *)photoURL { return nil; }
 - (NSString *)providerID { return @"local"; }
 - (NSArray *)providerData { return @[]; }
 - (BOOL)isAnonymous { return NO; }
 - (BOOL)isEmailVerified { return NO; }
 - (id)metadata { return self; }
-- (NSDate *)creationDate { return [NSDate dateWithTimeIntervalSinceReferenceDate:[self.saved[@"createdAt"] doubleValue]]; }
+- (NSDate *)creationDate { id v = self.saved[@"createdAt"]; return [NSDate dateWithTimeIntervalSinceReferenceDate:[v isKindOfClass:[NSNumber class]] ? [v doubleValue] : 0]; }
 - (NSDate *)lastSignInDate { return self.creationDate; }
 - (void)reloadWithCompletion:(void (^)(NSError *))completion { if (completion) completion(nil); }
 - (void)getIDTokenWithCompletion:(void (^)(NSString *, NSError *))completion {
@@ -177,6 +178,19 @@ static void RemoveLocalAuthListener(id receiver, SEL selector, id handle) {
     (void)receiver; (void)selector; (void)handle;
 }
 
+// ArtBrowser's own icon. Arc re-applies its own icon (and writes it onto the app bundle) at runtime,
+// so we pin ours: the Dock icon is ours, and the signed bundle is left untouched.
+static NSImage *ArtBrowserIcon;
+static IMP OriginalSetApplicationIconImage;
+static IMP OriginalSetIconForFile;
+static void ArtBrowserSetApplicationIconImage(id receiver, SEL selector, NSImage *image) {
+    ((void (*)(id, SEL, NSImage *))OriginalSetApplicationIconImage)(receiver, selector, ArtBrowserIcon ?: image);
+}
+static BOOL ArtBrowserSetIconForFile(id receiver, SEL selector, NSImage *image, NSString *path, NSUInteger options) {
+    if ([path hasPrefix:NSBundle.mainBundle.bundlePath]) return YES;
+    return ((BOOL (*)(id, SEL, NSImage *, NSString *, NSUInteger))OriginalSetIconForFile)(receiver, selector, image, path, options);
+}
+
 __attribute__((constructor)) static void InstallLocalServices(void) {
     const char *enabled = getenv("ARTBROWSER_LOCAL_ONLY");
     if (!enabled || strcmp(enabled, "1") != 0) return;
@@ -201,7 +215,8 @@ __attribute__((constructor)) static void InstallLocalServices(void) {
         if (profile) {
             NSString *file = [[NSString stringWithUTF8String:profile] stringByAppendingPathComponent:@"StorableAuthState.json"];
             NSData *data = [NSData dataWithContentsOfFile:file];
-            NSDictionary *state = data ? [NSJSONSerialization JSONObjectWithData:data options:0 error:NULL] : nil;
+            id root = data ? [NSJSONSerialization JSONObjectWithData:data options:0 error:NULL] : nil;
+            NSDictionary *state = [root isKindOfClass:[NSDictionary class]] ? root : nil;        // valid JSON can still be an array
             NSDictionary *user = [state[@"session"] isKindOfClass:[NSDictionary class]] ? state[@"session"][@"user"] : nil;
             if ([user isKindOfClass:[NSDictionary class]] && [user[@"id"] isKindOfClass:[NSString class]] && [user[@"id"] length]) {
                 PreservedUser = [ABLocalUser new]; PreservedUser.saved = user;
@@ -220,6 +235,16 @@ __attribute__((constructor)) static void InstallLocalServices(void) {
         for (NSString *name in @[@"removeAuthStateDidChangeListener:", @"removeIDTokenDidChangeListener:"]) {
             Method method = class_getInstanceMethod(auth, NSSelectorFromString(name));
             if (method) { method_setImplementation(method, (IMP)RemoveLocalAuthListener); authMethods++; }
+        }
+        NSString *iconPath = [NSBundle.mainBundle pathForResource:@"ArtBrowser" ofType:@"icns"];
+        ArtBrowserIcon = iconPath ? [[NSImage alloc] initWithContentsOfFile:iconPath] : nil;
+        if (ArtBrowserIcon) {
+            Method setImage = class_getInstanceMethod(NSClassFromString(@"NSApplication"), @selector(setApplicationIconImage:));
+            if (setImage) OriginalSetApplicationIconImage = method_setImplementation(setImage, (IMP)ArtBrowserSetApplicationIconImage);
+            Method setFile = class_getInstanceMethod(NSClassFromString(@"NSWorkspace"), @selector(setIcon:forFile:options:));
+            if (setFile) OriginalSetIconForFile = method_setImplementation(setFile, (IMP)ArtBrowserSetIconForFile);
+            [NSNotificationCenter.defaultCenter addObserverForName:NSApplicationDidFinishLaunchingNotification object:nil queue:NSOperationQueue.mainQueue
+                usingBlock:^(NSNotification *note) { (void)note; NSApp.applicationIconImage = ArtBrowserIcon; }];
         }
         fprintf(stderr, "[ArtBrowser] Local services layer active; %lu auth observer methods isolated\n", (unsigned long)authMethods);
     }
