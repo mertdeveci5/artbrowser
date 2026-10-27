@@ -1,0 +1,167 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Arc, reborn as Art</title>
+<meta name="description" content="ArtBrowser is an unofficial private copy of the Arc browser on your own Mac, built from your own Arc and your own data, that doesn't need Arc's servers.">
+<link rel="icon" href="logo-vintage.png" type="image/png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#0b0b0b; --ink:#ffffff; --soft:rgba(255,255,255,.68); --pill:#262626; --pill-hover:#333;
+  --card:#141414; --line:rgba(255,255,255,.12); --red:#ff5a6e; --blue:#2f55ff; --warn:#2a2410;
+  --serif:Inter,system-ui,-apple-system,"Segoe UI",sans-serif; --sans:Inter,system-ui,-apple-system,"Segoe UI",sans-serif;
+  --mono:ui-monospace,Menlo,monospace;
+}
+*{box-sizing:border-box}
+html{scroll-behavior:smooth;color-scheme:dark}
+body{margin:0;background:var(--bg);color:var(--ink);font-family:var(--sans);line-height:1.55;-webkit-font-smoothing:antialiased}
+a{color:inherit}
+
+/* draft banner: delete this block when the installer is published */
+.draft{background:var(--warn);color:#ffe9a8;text-align:center;padding:8px 16px;font:500 .78rem var(--sans);letter-spacing:.01em}
+
+.hero{min-height:100vh;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;padding:48px 20px 72px}
+.hero img.logo{width:clamp(170px,21vw,300px);height:auto;margin-bottom:clamp(28px,5vw,56px);animation:rise .9s cubic-bezier(.2,.7,.2,1) both}
+h1{font:600 clamp(2.5rem,5.2vw,5rem)/1.08 var(--serif);font-optical-sizing:auto;letter-spacing:-.045em;margin:0 0 clamp(20px,3vw,32px);animation:rise .9s .08s cubic-bezier(.2,.7,.2,1) both}
+.sub{font-size:clamp(1.02rem,1.46vw,1.31rem);line-height:1.42;letter-spacing:-.03em;margin:0;max-width:34em;animation:rise .9s .16s cubic-bezier(.2,.7,.2,1) both}
+.sub span{display:block}
+.pills{display:flex;flex-wrap:wrap;gap:12px;justify-content:center;margin-top:clamp(28px,4vw,40px);animation:rise .9s .24s cubic-bezier(.2,.7,.2,1) both}
+.pill{display:inline-flex;align-items:center;gap:8px;border:0;border-radius:999px;background:var(--pill);color:var(--ink);padding:18px 34px;font:500 1.05rem var(--sans);text-decoration:none;cursor:pointer;transition:background .15s,transform .15s}
+.pill:hover{background:var(--pill-hover);transform:translateY(-1px)}
+.pill.light{background:var(--ink);color:#0b0b0b}
+.pill.light:hover{background:#e8e8e8}
+.pill[aria-disabled="true"]{background:transparent;color:var(--soft);border:1.5px dashed rgba(255,255,255,.35);cursor:not-allowed}
+.pill[aria-disabled="true"]:hover{transform:none;background:transparent}
+.meta{margin-top:20px;font-size:.85rem;color:var(--soft);animation:rise .9s .3s cubic-bezier(.2,.7,.2,1) both}
+@keyframes rise{from{opacity:0;transform:translateY(14px)}to{opacity:1;transform:none}}
+@media (prefers-reduced-motion:reduce){*{animation:none!important}html{scroll-behavior:auto}}
+
+.wrap{max-width:820px;margin:0 auto;padding:0 20px}
+section{padding:72px 0;border-top:1px solid var(--line)}
+.eyebrow{font:500 .8rem var(--sans);letter-spacing:.12em;text-transform:uppercase;color:var(--soft)}
+h2{font:600 clamp(1.9rem,4.4vw,2.9rem)/1.1 var(--serif);letter-spacing:-.035em;margin:10px 0 30px}
+
+.progress{height:4px;border-radius:99px;background:var(--line);overflow:hidden;margin:0 0 20px}
+.progress b{display:block;height:100%;width:0;background:linear-gradient(90deg,var(--red),var(--blue));transition:width .3s}
+.steps{list-style:none;margin:0;padding:0;display:grid;gap:12px;counter-reset:s}
+.step{background:var(--card);border:1px solid var(--line);border-radius:22px;padding:22px 24px 22px 78px;position:relative;transition:opacity .2s,border-color .2s}
+.step::before{counter-increment:s;content:counter(s);position:absolute;left:22px;top:20px;width:38px;height:38px;border-radius:50%;background:var(--ink);color:#0b0b0b;display:grid;place-items:center;font:600 1rem var(--sans)}
+.step.done{opacity:.55;border-color:var(--blue)}
+.step.done::before{content:"✓";background:var(--blue);color:#fff}
+.step h3{margin:0 0 6px;font:600 1.3rem var(--serif)}
+.step p{margin:6px 0;color:var(--soft)}
+.step b{color:var(--ink);font-weight:600}
+.step label{display:inline-flex;gap:8px;align-items:center;margin-top:10px;font-size:.85rem;color:var(--soft);cursor:pointer}
+.step input[type=checkbox]{accent-color:var(--blue);width:16px;height:16px}
+.cmd{display:flex;gap:12px;align-items:center;justify-content:space-between;background:#000;border:1px solid var(--line);border-radius:12px;padding:12px 14px;margin:12px 0 6px;font:.88rem var(--mono);overflow-x:auto}
+.cmd code{white-space:nowrap}
+.cmd button{flex:none;background:var(--pill);color:var(--ink);border:0;border-radius:999px;padding:7px 14px;font:500 .8rem var(--sans);cursor:pointer}
+.cmd button:hover{background:var(--pill-hover)}
+
+.two{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.card{background:var(--card);border:1px solid var(--line);border-radius:22px;padding:24px}
+.card h3{margin:0 0 12px;font:600 1.3rem var(--serif)}
+.card ul{margin:0;padding-left:20px;color:var(--soft)}
+.card li{margin:7px 0}
+.ok h3::before{content:"● ";color:#34d399}.no h3::before{content:"● ";color:var(--red)}
+.note{background:var(--card);border:1px solid var(--line);border-left:4px solid #ffb703;border-radius:16px;padding:18px 20px;margin-top:14px;color:var(--soft)}
+.note b{color:var(--ink)}
+@media (max-width:700px){.two{grid-template-columns:1fr}.step{padding-left:68px}.step::before{left:18px}}
+
+footer{border-top:1px solid var(--line);padding:36px 0 56px;color:var(--soft);font-size:.88rem}
+footer p{max-width:60em;margin:8px 0}
+
+</style>
+</head>
+<body>
+<div class="draft">Beta: tested on one Mac so far. Please tell us what you see.</div>
+
+<header class="hero" id="top">
+  <img class="logo" id="heroLogo" src="logo-vintage.png" alt="Art logo">
+  <h1>Arc, reborn as Art</h1>
+  <p class="sub"><span>Arc closes on December 22, 2026.</span><span>ArtBrowser is a private copy of the Arc on your Mac that doesn't need Arc's servers.</span></p>
+  <div class="pills">
+    <a id="download" class="pill light" href="install-artbrowser.sh" download>Download installer</a>
+    <a class="pill" href="#steps">Read more</a>
+  </div>
+  <div class="meta">macOS · Apple Silicon · needs Arc 1.170.0 or 1.169.0 installed</div>
+</header>
+
+<main>
+  <div class="wrap"><section id="steps">
+    <div class="eyebrow">Step by step · about 10 minutes</div>
+    <h2>Five steps to switch</h2>
+    <div class="progress" aria-hidden="true"><b id="bar"></b></div>
+    <ol class="steps">
+      <li class="step"><h3>Check your Arc version</h3>
+        <p>Open Arc, then choose <b>Arc → About Arc</b> in the menu bar. It should say <b>1.170.0</b> or <b>1.169.0</b>. The installer stops if it's anything else, so it never builds something that wasn't tested.</p>
+        <label><input type="checkbox"> My Arc version is supported</label></li>
+      <li class="step"><h3>Quit Arc completely</h3>
+        <p>Press <b>⌘Q</b> in Arc. Closing the window isn't enough. The installer takes a clean copy of your data, and that only works while Arc is closed. Save anything you're typing first.</p>
+        <label><input type="checkbox"> Arc is quit</label></li>
+      <li class="step"><h3>Run one command</h3>
+        <p>Open <b>Terminal</b> (⌘Space, type “Terminal”), paste this and press Return:</p>
+        <div class="cmd"><code>curl -fsSL https://arcreborn.cool.computer/install-artbrowser.sh | bash</code><button type="button" data-copy="curl -fsSL https://arcreborn.cool.computer/install-artbrowser.sh | bash">Copy</button></div>
+        <p>It checks your Mac, backs up your Arc data, builds <b>ArtBrowser</b> in your Applications folder and leaves your original Arc untouched. It takes about a minute. Prefer a file? Use <b>Download installer</b> above, then run <b>bash ~/Downloads/install-artbrowser.sh</b>.</p>
+        <label><input type="checkbox"> The installer said it finished</label></li>
+      <li class="step"><h3>Open ArtBrowser and allow Keychain access</h3>
+        <p>Open <b>ArtBrowser</b> from your <b>Applications</b> folder. macOS will ask to use <b>“Arc Safe Storage”</b>. Click <b>Always Allow</b>, because that's what unlocks your saved logins and cookies.</p>
+        <label><input type="checkbox"> My Spaces and tabs are there</label></li>
+      <li class="step"><h3>Keep Arc installed for now</h3>
+        <p>Don't delete Arc or its Keychain entry <b>“Arc Safe Storage”</b>. Your logins depend on that entry. ArtBrowser is a one-time copy, and changes in either browser do not sync to the other.</p>
+        <label><input type="checkbox"> Understood</label></li>
+    </ol>
+  </section></div>
+
+  <div class="wrap"><section id="works">
+    <div class="eyebrow">The honest list</div>
+    <h2>What works, and what doesn't</h2>
+    <div class="two">
+      <div class="card ok"><h3>Works</h3><ul>
+        <li>Your Spaces, folders, pinned and open tabs</li>
+        <li>History, bookmarks and saved passwords</li>
+        <li>Your extensions</li>
+        <li>Website logins that were saved on your Mac</li>
+      </ul></div>
+      <div class="card no"><h3>Turned off</h3><ul>
+        <li>Arc account, sync and sharing links</li>
+        <li>Arc Max and other AI features</li>
+        <li>Automatic updates, including browser security fixes</li>
+      </ul></div>
+    </div>
+    <div class="note"><b>Please read:</b> the engine inside is a frozen copy of Chromium 155. It won't get security updates, so be careful on sites you don't trust and keep macOS up to date. For banking and other sensitive accounts, use a browser that is still maintained. The official route from the Arc team is <b>Dia</b>, which imports your Arc data.</div>
+  </section></div>
+</main>
+
+<footer><div class="wrap">
+  <p>ArtBrowser is an unofficial community project. It is not affiliated with or endorsed by The Browser Company. “Arc” and “Dia” belong to their owners.</p>
+  <p>It doesn't include or download Arc. The installer only copies the Arc app and data that are already on your own Mac, and it never changes the originals.</p>
+</div></footer>
+
+<script>
+(function(){
+  var steps=[].slice.call(document.querySelectorAll(".step")), bar=document.getElementById("bar");
+  function update(){
+    var n=0;
+    steps.forEach(function(s){var c=s.querySelector("input[type=checkbox]"); var d=c&&c.checked; s.classList.toggle("done",!!d); if(d)n++});
+    bar.style.width=(n/steps.length*100)+"%";
+  }
+  steps.forEach(function(s){var c=s.querySelector("input[type=checkbox]"); if(c)c.addEventListener("change",update)});
+  document.querySelectorAll("[data-copy]").forEach(function(b){
+    b.addEventListener("click",function(){
+      var t=b.getAttribute("data-copy");
+      var ok=function(){b.textContent="Copied";setTimeout(function(){b.textContent="Copy"},1500)};
+      if(navigator.clipboard&&navigator.clipboard.writeText){navigator.clipboard.writeText(t).then(ok,function(){})}
+    });
+  });
+  var dl=document.getElementById("download");
+  dl.addEventListener("click",function(e){ if(dl.getAttribute("aria-disabled")==="true"){ e.preventDefault(); document.getElementById("steps").scrollIntoView({behavior:"smooth"}); } });
+  update();
+})();
+</script>
+</body>
+</html>

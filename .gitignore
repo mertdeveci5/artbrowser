@@ -1,0 +1,9 @@
+.local/
+__pycache__/
+*.pyc
+.venv/
+
+.env
+site/install-artbrowser.sh
+site/artbrowser-payload.tgz
+site/source/
