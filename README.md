@@ -1,44 +1,70 @@
+<p align="center">
+  <img src="site/og-image.png" alt="Arc, reborn as Art" width="720">
+</p>
+
 # ArtBrowser
 
-Keep using the [Arc](https://arc.net) browser after its servers go away.
+Keep using [Arc](https://arc.net) after it shuts down on **22 December 2026**.
 
-Arc is shutting down on 22 December 2026. ArtBrowser makes a private, local copy of the Arc that is **already installed on your Mac**, together with your own Arc data (Spaces, tabs, history, logins), and runs it on its own with Arc's cloud services switched off.
+ArtBrowser makes a private copy of the Arc app on your Mac, with your own Spaces, tabs, history and logins. It runs on its own, with Arc's cloud services switched off. Nothing leaves your Mac.
 
-> **Unofficial.** Not affiliated with or endorsed by The Browser Company. "Arc" and "Dia" belong to their owners. This repository contains no Arc code or binaries. The installer only copies the Arc app and data that are already on your own Mac, and never changes the originals.
+> [!NOTE]
+> Unofficial. Not affiliated with The Browser Company. This repo has no Arc code or binaries. The installer only copies the Arc you already have, and never changes the original.
 
 ## Install
 
-macOS on Apple Silicon, with Arc 1.169.0 or 1.170.0 installed (the supported list lives in `installer/SUPPORTED_VERSIONS`). Quit Arc (⌘Q), then run:
+You need a Mac with Apple Silicon and Arc 1.169.0 or 1.170.0. Quit Arc (⌘Q), then run:
 
 ```sh
-bash install-artbrowser.sh          # or: --check to look without changing anything
-bash install-artbrowser.sh --uninstall
+curl -fsSL https://arcreborn.cool.computer/install-artbrowser.sh | bash
 ```
 
-It checks your Mac, backs up your Arc data, builds `~/Applications/ArtBrowser.app` from a copy of your Arc, gives it its own copy of your data and signs it locally. The first time you open it, macOS asks to use "Arc Safe Storage": choose Always Allow, as that unlocks your saved logins. Keep Arc installed and do not delete that Keychain entry.
+It takes about a minute. You get `~/Applications/ArtBrowser.app`.
 
-Build the installer yourself with `tools/package_installer.sh` (needs the Xcode command line tools).
+The first time you open it, macOS asks to use "Arc Safe Storage". Choose **Always Allow**. This unlocks your saved logins.
 
-## What it is, and what it is not
+| Task | Command |
+| --- | --- |
+| Check only, change nothing | `... \| bash -s -- --check` |
+| Uninstall | `... \| bash -s -- --uninstall` |
 
-ArtBrowser is a copy of Arc's already compiled app plus two small pieces of our own code:
+Uninstalling keeps Arc, your Arc data and your backup.
 
-- `native/Launcher.m`: starts the browser against ArtBrowser's separate profile.
-- `native/LocalServices.m`: a compatibility layer that supplies the saved local identity, reports CloudKit as unavailable, disables sync and updates, and rejects native requests to the vendor's service domains.
+## How it works
 
-It is **not** a maintained browser. The engine inside is a frozen Chromium 155 with no security updates. Use a maintained browser for sensitive accounts, keep macOS updated, and be careful on sites you do not trust. Cloud features (account, sync, sharing links, AI) do not work. Extensions, passkeys, DRM and wallet signing are not fully verified.
+ArtBrowser is a copy of Arc plus two small pieces of our own code.
+
+| File | Job |
+| --- | --- |
+| `native/Launcher.m` | Starts the browser with its own separate profile. |
+| `native/LocalServices.m` | Supplies the saved local login, turns off sync and updates, and blocks calls to Arc's servers. |
+
+## Limits
+
+- The browser engine is frozen at Chromium 155. It gets **no security updates**. Use a maintained browser for sensitive accounts.
+- Account, sync, sharing links and AI features do not work.
+- Extensions, passkeys, DRM and wallet signing are not fully tested.
+- Tested on one Mac so far. Please [open an issue](https://github.com/mertdeveci5/artbrowser/issues) if something breaks.
 
 ## Verification
 
-See [VERIFICATION.md](VERIFICATION.md) for what was tested (simulated post-shutdown dates, failing and "account disabled" server replies, offline cold restarts) and what was not. Run the unit tests with `python3 -m unittest discover -s tests -v`.
+See [VERIFICATION.md](VERIFICATION.md) for what was tested, and what was not. This includes simulated dates after the shutdown and offline restarts.
 
-## Layout
+Run the unit tests with:
 
-- `installer/`, `tools/package_installer.sh`: the one-command installer and its packager.
-- `native/`: the launcher, the local-services layer and QA-only instrumentation (`TestClock.c`, `ShutdownConditions.m`), which is never installed.
-- `tools/`: sidebar export, the installer packager and isolated verification (QA) tools.
+```sh
+python3 -m unittest discover -s tests -v
+```
+
+## Repo layout
+
+- `installer/`: the installer script and icon.
+- `native/`: the launcher and the local-services layer.
+- `tools/`: packaging and test tools.
 - `site/`: the landing page.
+
+To build the installer yourself, run `tools/package_installer.sh`. You need the Xcode command line tools.
 
 ## License
 
-MIT, see [LICENSE](LICENSE).
+MIT. See [LICENSE](LICENSE).
