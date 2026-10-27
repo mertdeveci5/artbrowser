@@ -57,4 +57,13 @@ A normal real-Keychain launch previously retained a signed-in Google session and
 
 Most importantly, this build has no maintained Chromium security-update pipeline. A working frozen engine is not evidence that it remains safe indefinitely. No test can certify unrestricted future browsing as “100% guaranteed.” A maintained engine and broader compatibility testing are still needed for a long-term supported browser.
 
-No friends installer or public distribution package has been produced; that step remains awaiting the user's confirmation.
+## Installer verification
+
+The one-command installer (`installer/install-artbrowser.sh.in`, packaged by `tools/package_installer.sh`) was checked separately from the simulations above:
+
+- **Real run:** installed on one Apple Silicon Mac running macOS 26.6.2 against Arc 1.170.0 (89123); about 40 seconds; the built app launched, restored all Spaces and tabs, kept a strictly valid signature after launch, and used the new icon. Arc and its data were unchanged.
+- **Sandboxed tests** (`/bin/bash` 3.2, throwaway home folder, 22 checks): install and uninstall; a symlinked Arc path; a link chain through a `Singleton*`-named link; a link inside the Arc app that leaves it; a held lock, a lock with no owner, and a stale lock; a second install; a truncated download (nothing runs); detection of a running app by bundle identifier. All passed.
+- **Two independent static code reviews** (read-only) of the installer, native code, tools and landing page. The second found the issues now fixed above (link chains, links inside the app bundle, lock takeover, renamed-bundle detection, per-volume space checks, accessibility, claims).
+- **Dock icon:** Arc draws its Dock icon with a Dock Tile plug-in loaded by the Dock itself; the installer removes that plug-in so the Dock uses ArtBrowser's own icon.
+
+**Not verified:** Intel Macs; any Mac other than the one above; a real `curl | bash` over the network (the run used the local payload file); installing against Arc 1.169.0 through the installer (that version was only exercised in the earlier simulations); the page's copy button on other browsers; and, as above, a real server-side shutdown.

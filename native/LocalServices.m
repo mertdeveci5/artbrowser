@@ -187,7 +187,10 @@ static void ArtBrowserSetApplicationIconImage(id receiver, SEL selector, NSImage
     ((void (*)(id, SEL, NSImage *))OriginalSetApplicationIconImage)(receiver, selector, ArtBrowserIcon ?: image);
 }
 static BOOL ArtBrowserSetIconForFile(id receiver, SEL selector, NSImage *image, NSString *path, NSUInteger options) {
-    if ([path hasPrefix:NSBundle.mainBundle.bundlePath]) return YES;
+    // Compare real paths: the bundle itself or something inside it, not just a name that starts the same way.
+    NSString *bundle = NSBundle.mainBundle.bundlePath.stringByResolvingSymlinksInPath;
+    NSString *target = path.stringByResolvingSymlinksInPath;
+    if ([target isEqualToString:bundle] || [target hasPrefix:[bundle stringByAppendingString:@"/"]]) return YES;
     return ((BOOL (*)(id, SEL, NSImage *, NSString *, NSUInteger))OriginalSetIconForFile)(receiver, selector, image, path, options);
 }
 
