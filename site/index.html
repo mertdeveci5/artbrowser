@@ -13,7 +13,7 @@
 :root{--bg:#0b0b0b;--ink:#fff;--soft:rgba(255,255,255,.7);--pill:#262626;--pill-hover:#333;
   --serif:Inter,system-ui,-apple-system,"Segoe UI",sans-serif;--sans:Inter,system-ui,-apple-system,"Segoe UI",sans-serif;--mono:ui-monospace,Menlo,monospace;
   /* read.cv-style body */
-  --rc:#1b1b1b;--t1:#f1f1f1;--t2:#9a9a9a;--t3:#6b6b6b;--chip:#2b2b2b;--link:#c9d3ff}
+  --rc:#1b1b1b;--t1:#f1f1f1;--t2:#9a9a9a;--t3:#8f8f8f;--chip:#2b2b2b;--link:#c9d3ff}
 *{box-sizing:border-box}
 html{scroll-behavior:smooth;color-scheme:dark}
 body{margin:0;background:var(--bg);color:var(--ink);font-family:var(--sans);line-height:1.65;-webkit-font-smoothing:antialiased}
@@ -96,8 +96,8 @@ details p,details ul{margin-top:6px}
   </header>
 
 <section class="sec" id="install"><h2 class="st">Install</h2>
-<div class="r"><div class="lab">1</div><div class="c"><h3>Check your Mac and your Arc</h3><p>You need an <b>Apple chip</b> (M1 or newer): Apple menu → About This Mac → Chip. Intel Macs aren't supported yet.</p><p>You need <b>Arc 1.170.0 or 1.169.0</b>, opened and signed in at least once. Check it in Arc: Arc menu → About Arc.</p><p class="dim">Another version? The installer stops and changes nothing. Update Arc (1.170.0 is the final release) and try again.</p></div></div>
-<div class="r"><div class="lab">2</div><div class="c"><h3>Quit Arc, then run one command</h3><p>Press <b>⌘Q</b> in Arc. Closing the window isn't enough. Then open <b>Terminal</b> (⌘Space, type “Terminal”) and paste this:</p><div class="cmd"><code>curl -fsSL https://arcreborn.cool.computer/install-artbrowser.sh | bash</code><button class="copy" type="button" data-copy="curl -fsSL https://arcreborn.cool.computer/install-artbrowser.sh | bash">Copy</button></div><p>It takes about 40 seconds and asks for nothing. When it says “ArtBrowser is installed”, you're done with this step.</p></div></div>
+<div class="r"><div class="lab">1</div><div class="c"><h3>Check your Mac and your Arc</h3><p>You need an <b>Apple chip</b> (M1 or newer): Apple menu → About This Mac → Chip. Intel Macs aren't supported yet.</p><p>You need <b>Arc 1.170.0</b> (the final release, and the version the installer was tested on) or <b>1.169.0</b> (tested in earlier simulations). Open Arc and sign in at least once. Check the version in Arc: Arc menu → About Arc.</p><p class="dim">Another version? The installer stops and changes nothing. Update Arc (1.170.0 is the final release) and try again.</p></div></div>
+<div class="r"><div class="lab">2</div><div class="c"><h3>Quit Arc, then run one command</h3><p>Press <b>⌘Q</b> in Arc. Closing the window isn't enough. Then open <b>Terminal</b> (⌘Space, type “Terminal”) and paste this:</p><div class="cmd"><code>curl -fsSL https://arcreborn.cool.computer/install-artbrowser.sh | bash</code><button class="copy" type="button" aria-live="polite" data-copy="curl -fsSL https://arcreborn.cool.computer/install-artbrowser.sh | bash">Copy</button></div><p>It takes about 40 seconds and asks for nothing. When it says “ArtBrowser is installed”, you're done with this step.</p></div></div>
 <div class="r"><div class="lab">3</div><div class="c"><h3>Open ArtBrowser</h3><p>Find <b>ArtBrowser</b> in the Applications folder inside your home folder, or run <code>open ~/Applications/ArtBrowser.app</code>.</p><p>macOS asks to use <b>“Arc Safe Storage”</b>. Enter your Mac password (or use Touch ID) and click <b>Always Allow</b>. That unlocks your saved logins. Your Spaces and tabs are there, as they were in Arc.</p><p class="dim">To open links in it: System Settings → Desktop &amp; Dock → Default web browser → ArtBrowser.</p></div></div>
 </section>
 
@@ -127,7 +127,7 @@ details p,details ul{margin-top:6px}
 </section>
 
 <section class="sec" id="privacy"><h2 class="st">Privacy</h2>
-<div class="r"><div class="lab">Local</div><div class="c"><p><b>Everything stays on your Mac.</b> There is no account and no server of ours. We never receive your tabs, history, passwords or anything else.</p><ul><li>The installer downloads two things: itself, and one small launcher file. It uploads nothing.</li><li>Your data is copied from Arc's folder to ArtBrowser's folder, on the same Mac. Arc's folder isn't changed.</li><li>ArtBrowser blocks requests to Arc's and The Browser Company's services (account, sync, analytics, feature flags).</li></ul></div></div>
+<div class="r"><div class="lab">Local</div><div class="c"><p><b>Your data stays on your Mac.</b> There is no account and no server of ours, so we never receive your tabs, history, passwords or anything else.</p><ul><li>The installer downloads two things: itself, and one small launcher file. It uploads nothing.</li><li>Your data is copied from Arc's folder to ArtBrowser's folder, on the same Mac. Arc's folder isn't changed.</li><li>ArtBrowser blocks its own native requests to Arc's and The Browser Company's services (account, sync, analytics, feature flags). Ordinary web traffic from the browser engine isn't filtered.</li></ul></div></div>
 <div class="r"><div class="lab">Aware</div><div class="c"><ul><li>The browser engine is a <b>frozen copy of Chromium 155</b> and gets no security updates. Be careful on sites you don't trust, keep macOS updated, and use a maintained browser for banking.</li><li>The app is signed on your Mac, not by Apple, so it lacks some of the protections Arc had.</li><li>The backup and the copy both hold your data. Treat them like your Arc folder.</li><li>We tested that it works with Arc's services blocked, but we can't prove every part stays silent. A network monitor will show you.</li></ul><p>The official route from the Arc team is <b>Dia</b>, which imports your Arc data.</p></div></div>
 <div class="r"><div class="lab">Check</div><div class="c"><p>Read the installer (<a href="install-artbrowser.sh">plain text</a>) and the two programs we add (<a href="source/Launcher.m">Launcher.m</a>, <a href="source/LocalServices.m">LocalServices.m</a>). Look without changing anything with <code>bash install-artbrowser.sh --check</code>. Watch its network use in Little Snitch or Activity Monitor. It's all open source on <a href="https://github.com/mertdeveci5/artbrowser">GitHub</a>.</p></div></div>
 </section>
@@ -136,7 +136,7 @@ details p,details ul{margin-top:6px}
 <div class="r"><div class="lab">Idea</div><div class="c"><p>We don't have Arc's source code and we haven't rebuilt Arc. ArtBrowser is <b>your own Arc app, copied</b>, plus two small pieces of ours, so it behaves like Arc but doesn't need Arc's servers.</p></div></div>
 <div class="r"><div class="lab">Why</div><div class="c"><p>Arc signs you in to an account and syncs through Apple's iCloud and Google's Firebase. When the account service goes away, Arc could refuse to start or sign you out.</p></div></div>
 <div class="r"><div class="lab">Launcher</div><div class="c"><p>Starts the copied browser on its own data folder, refuses to ever use Arc's, and turns updates and sync off.</p></div></div>
-<div class="r"><div class="lab">Layer</div><div class="c"><p>A small library loaded into the app. It supplies your saved local identity so Arc starts without signing in, reports iCloud as “no account”, and rejects requests to Arc's and The Browser Company's services before they leave your Mac.</p></div></div>
+<div class="r"><div class="lab">Layer</div><div class="c"><p>A small library loaded into the app. It supplies your saved local identity so Arc starts without signing in, reports iCloud as “no account”, and rejects the app's own native requests to Arc's and The Browser Company's services. It can't filter requests made by other parts of the app, which is why we tested with the network blocked as well.</p></div></div>
 <div class="r"><div class="lab">Signing</div><div class="c"><p>Changing the app breaks Arc's original signature, so the installer signs it again on your Mac. That is why macOS asks about the Keychain once.</p></div></div>
 <div class="r"><div class="lab">Tests</div><div class="c"><p>We launched copies with the clock set past 22 December 2026 and into 2027, with no network, with Arc's app and data made unreadable, and with simulated server replies saying “account disabled” or “account deleted”. They kept starting and restoring Spaces. Those replies were synthetic: a real shutdown hasn't happened yet, so we can't promise it.</p></div></div>
 </section>
@@ -165,7 +165,8 @@ details p,details ul{margin-top:6px}
 document.querySelectorAll("[data-copy]").forEach(function(b){
   b.addEventListener("click",function(){
     var done=function(){b.textContent="Copied";setTimeout(function(){b.textContent="Copy"},1600)};
-    if(navigator.clipboard&&navigator.clipboard.writeText){navigator.clipboard.writeText(b.getAttribute("data-copy")).then(done,function(){})}
+    var fail=function(){var c=b.parentNode.querySelector("code"); var r=document.createRange(); r.selectNodeContents(c); var sel=getSelection(); sel.removeAllRanges(); sel.addRange(r); b.textContent="Press ⌘C"; setTimeout(function(){b.textContent="Copy"},2500)};
+    if(navigator.clipboard&&navigator.clipboard.writeText){navigator.clipboard.writeText(b.getAttribute("data-copy")).then(done,fail)}else{fail()}
   });
 });
 </script>
